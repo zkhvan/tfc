@@ -1,7 +1,14 @@
 package cmdutil
 
+import (
+	"github.com/hashicorp/go-tfe"
+	"github.com/zkhvan/tfc/pkg/iolib"
+)
+
 type Factory struct {
-	Hostname string
-	Address  string
-	Token    string
+	ExecutableName string
+
+	IOStreams *iolib.IOStreams
+
+	TFEClient func() (*tfe.Client, error)
 }

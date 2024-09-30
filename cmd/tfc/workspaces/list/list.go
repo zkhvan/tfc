@@ -11,18 +11,14 @@ import (
 )
 
 type Options struct {
-	Hostname string
-	Address  string
-	Token    string
+	TFEClient func() (*tfe.Client, error)
 
 	Organization string
 }
 
 func NewCmdList(f *cmdutil.Factory) *cobra.Command {
 	opts := &Options{
-		Hostname: f.Hostname,
-		Address:  f.Address,
-		Token:    f.Token,
+		TFEClient: f.TFEClient,
 	}
 
 	cmd := &cobra.Command{
@@ -48,21 +44,17 @@ func NewCmdList(f *cmdutil.Factory) *cobra.Command {
 	return cmd
 }
 
-func (o *Options) Complete(cmd *cobra.Command, args []string) {
-	o.Organization = args[0]
+func (opts *Options) Complete(cmd *cobra.Command, args []string) {
+	opts.Organization = args[0]
 }
 
-func (o *Options) Run(ctx context.Context) error {
-	cfg := tfe.DefaultConfig()
-	cfg.Address = o.Address
-	cfg.Token = o.Token
-
-	client, err := tfe.NewClient(cfg)
+func (opts *Options) Run(ctx context.Context) error {
+	client, err := opts.TFEClient()
 	if err != nil {
 		return err
 	}
 
-	list, err := client.Workspaces.List(ctx, o.Organization, &tfe.WorkspaceListOptions{})
+	list, err := client.Workspaces.List(ctx, opts.Organization, &tfe.WorkspaceListOptions{})
 	if err != nil {
 		return err
 	}
