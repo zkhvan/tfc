@@ -3,7 +3,6 @@ package factory
 import (
 	"context"
 	"fmt"
-	"os"
 
 	"github.com/hashicorp/go-tfe"
 	"github.com/sethvargo/go-envconfig"
@@ -30,11 +29,7 @@ func New() (*cmdutil.Factory, error) {
 }
 
 func ioStreams(_ *cmdutil.Factory) *iolib.IOStreams {
-	return &iolib.IOStreams{
-		In:     os.Stdin,
-		Out:    os.Stdout,
-		ErrOut: os.Stderr,
-	}
+	return iolib.System()
 }
 
 func tfeClientFunc(_ *cmdutil.Factory) func() (*tfe.Client, error) {
