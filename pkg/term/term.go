@@ -52,15 +52,19 @@ func (t Term) IsTerminalOutput() bool {
 // IsColorEnabled reports whether it's safe to output ANSI color sequences,
 // depending on IsTerminalOutput and environment variables.
 func (t Term) IsColorEnabled() bool {
-	return t.profile != colorprofile.NoTTY && t.profile != colorprofile.Ascii
+	return t.profile != colorprofile.NoTTY &&
+		t.profile != colorprofile.Ascii
 }
 
-// Is256ColorSupported reports whether the terminal advertises ANSI 256 color codes.
+// Is256ColorSupported reports whether the terminal advertises ANSI 256 color
+// codes.
 func (t Term) Is256ColorSupported() bool {
-	return t.profile == colorprofile.TrueColor || t.profile == colorprofile.ANSI256
+	return t.profile == colorprofile.TrueColor ||
+		t.profile == colorprofile.ANSI256
 }
 
-// IsTrueColorSupported reports whether the terminal advertises support for ANSI true color sequences.
+// IsTrueColorSupported reports whether the terminal advertises support for
+// ANSI true color sequences.
 func (t Term) IsTrueColorSupported() bool {
 	return t.profile == colorprofile.TrueColor
 }
