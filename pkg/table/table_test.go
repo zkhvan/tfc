@@ -1,0 +1,192 @@
+package table_test
+
+import (
+	"bytes"
+	"io"
+	"testing"
+
+	"github.com/MakeNowJust/heredoc"
+
+	"github.com/zkhvan/tfc/pkg/table"
+)
+
+func Test_SingleColumn(t *testing.T) {
+	newTable := func(w io.Writer) table.Table {
+		return table.New(w,
+			table.WithColumns(
+				table.Column("ID"),
+			),
+		)
+	}
+
+	t.Run("single row", func(t *testing.T) {
+		var buf bytes.Buffer
+
+		tbl := newTable(&buf)
+		tbl.AddRow("1")
+		tbl.Render()
+
+		testBuffer(t, buf, heredoc.Doc(`
+			ID
+			1 
+		`))
+	})
+
+	t.Run("no rows", func(t *testing.T) {
+		var buf bytes.Buffer
+
+		tbl := newTable(&buf)
+		tbl.Render()
+
+		testBuffer(t, buf, heredoc.Doc(`
+			ID
+		`))
+	})
+
+	t.Run("single row with extra columns", func(t *testing.T) {
+		var buf bytes.Buffer
+
+		tbl := newTable(&buf)
+		tbl.AddRow("1", "2")
+		tbl.Render()
+
+		testBuffer(t, buf, heredoc.Doc(`
+			ID   
+			1   2
+		`))
+	})
+
+	t.Run("second row with extra columns", func(t *testing.T) {
+		var buf bytes.Buffer
+
+		tbl := newTable(&buf)
+		tbl.AddRow("XXXXX")
+		tbl.AddRow("1", "2")
+		tbl.Render()
+
+		testBuffer(t, buf, heredoc.Doc(`
+			ID      
+			XXXXX
+			1      2
+		`))
+	})
+
+	t.Run("second row with extra long columns", func(t *testing.T) {
+		var buf bytes.Buffer
+
+		tbl := newTable(&buf)
+		tbl.AddRow("XXXXX")
+		tbl.AddRow("1", "XXXXX")
+		tbl.AddRow("2")
+		tbl.Render()
+
+		testBuffer(t, buf, heredoc.Doc(`
+			ID          
+			XXXXX
+			1      XXXXX
+			2    
+		`))
+	})
+}
+
+func Test_AutomaticColumns(t *testing.T) {
+	newTable := func(w io.Writer) table.Table {
+		return table.New(w)
+	}
+
+	t.Run("single column and single row", func(t *testing.T) {
+		var buf bytes.Buffer
+
+		tbl := newTable(&buf)
+		tbl.AddRow("1")
+		tbl.Render()
+
+		testBuffer(t, buf, heredoc.Doc(`
+			1
+		`))
+	})
+
+	t.Run("single column and multiple rows", func(t *testing.T) {
+		var buf bytes.Buffer
+
+		tbl := newTable(&buf)
+		tbl.AddRow("1")
+		tbl.AddRow("2")
+		tbl.AddRow("3")
+		tbl.Render()
+
+		testBuffer(t, buf, heredoc.Doc(`
+			1
+			2
+			3
+		`))
+	})
+
+	t.Run("multiple column and single row", func(t *testing.T) {
+		var buf bytes.Buffer
+
+		tbl := newTable(&buf)
+		tbl.AddRow("123", "456", "789")
+		tbl.Render()
+
+		testBuffer(t, buf, heredoc.Doc(`
+			123  456  789
+		`))
+	})
+
+	t.Run("multiple column and multiple rows", func(t *testing.T) {
+		var buf bytes.Buffer
+
+		tbl := newTable(&buf)
+		tbl.AddRow("1", "2", "3")
+		tbl.AddRow("123", "456", "789")
+		tbl.Render()
+
+		testBuffer(t, buf, heredoc.Doc(`
+			1    2    3  
+			123  456  789
+		`))
+	})
+
+	t.Run("inconsistent columns with multiple rows", func(t *testing.T) {
+		var buf bytes.Buffer
+
+		tbl := newTable(&buf)
+		tbl.AddRow("1", "2")
+		tbl.AddRow("123", "456", "789")
+		tbl.Render()
+
+		testBuffer(t, buf, heredoc.Doc(`
+			1    2  
+			123  456  789
+		`))
+	})
+}
+
+func Test_TruncateAutomaticColumns(t *testing.T) {
+	newTable := func(w io.Writer) table.Table {
+		return table.New(w,
+			table.WithMaxWidth(9),
+		)
+	}
+
+	t.Run("single column and single row", func(t *testing.T) {
+		var buf bytes.Buffer
+
+		tbl := newTable(&buf)
+		tbl.AddRow("1234567890")
+		tbl.Render()
+
+		testBuffer(t, buf, heredoc.Doc(`
+			123456...
+		`))
+	})
+}
+
+func testBuffer(t *testing.T, buf bytes.Buffer, want string) {
+	t.Helper()
+
+	if got := buf.String(); got != want {
+		t.Errorf("buffer got:\n%swant:\n%s", got, want)
+	}
+}
