@@ -16,7 +16,7 @@ type Table interface {
 type table struct {
 	w io.Writer
 
-	colDefs []*columnDef
+	colDefs []*ColumnDef
 	rows    [][]string
 
 	delimiter string
@@ -52,7 +52,7 @@ func WithMaxWidth(n int) tableOption {
 	}
 }
 
-func WithColumns(cols ...*columnDef) tableOption {
+func WithColumns(cols ...*ColumnDef) tableOption {
 	return func(t *table) {
 		t.colDefs = cols
 	}
@@ -121,7 +121,7 @@ func (t *table) hasHeader() bool {
 
 func (t *table) updateCols(row []string) {
 	if len(t.colDefs) == 0 {
-		t.colDefs = make([]*columnDef, 0, len(row))
+		t.colDefs = make([]*ColumnDef, 0, len(row))
 	}
 
 	if len(t.colDefs) < len(row) {
@@ -153,7 +153,7 @@ func (t *table) truncateCols() {
 		return
 	}
 
-	var truncateCols, nonTruncateCols []*columnDef
+	var truncateCols, nonTruncateCols []*ColumnDef
 	for _, col := range t.colDefs {
 		if col.Truncate() {
 			truncateCols = append(truncateCols, col)

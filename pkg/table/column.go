@@ -4,13 +4,13 @@ import (
 	"github.com/zkhvan/tfc/pkg/ptr"
 )
 
-type columnDef struct {
+type ColumnDef struct {
 	width    int
 	header   *string
 	truncate *bool
 }
 
-func (c *columnDef) Truncate() bool {
+func (c *ColumnDef) Truncate() bool {
 	if c.truncate == nil {
 		return true
 	}
@@ -18,7 +18,7 @@ func (c *columnDef) Truncate() bool {
 	return *c.truncate
 }
 
-func (c *columnDef) Header() string {
+func (c *ColumnDef) Header() string {
 	if c.header == nil {
 		return ""
 	}
@@ -26,9 +26,9 @@ func (c *columnDef) Header() string {
 	return *c.header
 }
 
-type columnOption func(*columnDef)
+type columnOption func(*ColumnDef)
 
-func Column(header string, opts ...columnOption) *columnDef {
+func Column(header string, opts ...columnOption) *ColumnDef {
 	c := NewColumnDef(
 		append(
 			opts,
@@ -38,8 +38,8 @@ func Column(header string, opts ...columnOption) *columnDef {
 	return c
 }
 
-func NewColumnDef(opts ...columnOption) *columnDef {
-	c := &columnDef{}
+func NewColumnDef(opts ...columnOption) *ColumnDef {
+	c := &ColumnDef{}
 
 	for _, opt := range opts {
 		opt(c)
@@ -49,7 +49,7 @@ func NewColumnDef(opts ...columnOption) *columnDef {
 }
 
 func ColumnWithHeader(s string) columnOption {
-	return func(c *columnDef) {
+	return func(c *ColumnDef) {
 		c.header = ptr.String(s)
 
 		n := len(s)
@@ -60,13 +60,13 @@ func ColumnWithHeader(s string) columnOption {
 }
 
 func ColumnWithTruncation() columnOption {
-	return func(c *columnDef) {
+	return func(c *ColumnDef) {
 		c.truncate = ptr.Bool(true)
 	}
 }
 
 func ColumnWithNoTruncation() columnOption {
-	return func(c *columnDef) {
+	return func(c *ColumnDef) {
 		c.truncate = ptr.Bool(false)
 	}
 }
