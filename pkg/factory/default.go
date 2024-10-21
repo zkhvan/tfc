@@ -20,6 +20,7 @@ type Config struct {
 func New() (*cmdutil.Factory, error) {
 	f := &cmdutil.Factory{
 		ExecutableName: "tfc",
+		Clock:          cmdutil.NewClock(nil),
 	}
 
 	f.IOStreams = ioStreams(f)

@@ -9,6 +9,7 @@ type Factory struct {
 	ExecutableName string
 
 	IOStreams *iolib.IOStreams
+	Clock     *Clock
 
 	TFEClient func() (*tfe.Client, error)
 }

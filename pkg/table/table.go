@@ -105,7 +105,11 @@ func (t *table) renderField(col int, value string) {
 	case len(value) > colDef.width:
 		fmt.Fprintf(t.w, text.Truncate(colDef.width, value))
 	case len(value) <= colDef.width:
-		fmt.Fprintf(t.w, text.PadRight(colDef.width, value))
+		if col == len(t.colDefs)-1 {
+			fmt.Fprintf(t.w, value)
+		} else {
+			fmt.Fprintf(t.w, text.PadRight(colDef.width, value))
+		}
 	}
 }
 
