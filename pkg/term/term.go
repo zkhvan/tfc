@@ -1,6 +1,7 @@
 package term
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"os"
@@ -11,21 +12,51 @@ import (
 // Term represents information about the terminal that a process is connected
 // to.
 type Term struct {
-	in     *os.File
-	out    *colorprofile.Writer
-	errOut *colorprofile.Writer
+	in     fileReader
+	out    fileWriter
+	errOut fileWriter
 
 	profile colorprofile.Profile
 }
 
-func New() Term {
+func System() Term {
 	t := Term{
-		in:     os.Stdin,
-		out:    colorprofile.NewWriter(os.Stdout, os.Environ()),
-		errOut: colorprofile.NewWriter(os.Stderr, os.Environ()),
+		in: os.Stdin,
+		out: &fdWriter{
+			Writer: colorprofile.NewWriter(os.Stderr, os.Environ()),
+			fd:     os.Stdout.Fd(),
+		},
+		errOut: &fdWriter{
+			Writer: colorprofile.NewWriter(os.Stderr, os.Environ()),
+			fd:     os.Stderr.Fd(),
+		},
 	}
 
 	t.profile = colorprofile.Detect(t.out, os.Environ())
+
+	return t
+}
+func Test(in, out, errOut *bytes.Buffer, environ []string) Term {
+	if environ == nil {
+		environ = os.Environ()
+	}
+
+	t := Term{
+		in: &fdReader{
+			ReadCloser: io.NopCloser(in),
+			fd:         0,
+		},
+		out: &fdWriter{
+			Writer: colorprofile.NewWriter(out, environ),
+			fd:     1,
+		},
+		errOut: &fdWriter{
+			Writer: colorprofile.NewWriter(out, environ),
+			fd:     2,
+		},
+	}
+
+	t.profile = colorprofile.Detect(t.out, environ)
 
 	return t
 }
@@ -73,8 +104,12 @@ func (t Term) IsTrueColorSupported() bool {
 // Size returns the width and height of the terminal that the current process
 // is attached to. In case of errors, the numeric values returned are -1.
 func (t Term) Size() (int, int, error) {
-	f, ok := t.out.Forward.(File)
+	f, ok := t.out.(fileWriter)
 	if !ok {
+		return 0, 0, fmt.Errorf("not connected to a terminal")
+	}
+
+	if !IsTerminal(f.Fd()) {
 		return 0, 0, fmt.Errorf("not connected to a terminal")
 	}
 

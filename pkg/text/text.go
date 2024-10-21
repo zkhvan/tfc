@@ -1,7 +1,9 @@
 package text
 
 import (
+	"fmt"
 	"strings"
+	"time"
 
 	"github.com/charmbracelet/lipgloss"
 	"github.com/muesli/reflow/truncate"
@@ -41,4 +43,39 @@ func PadRight(maxWidth int, s string) string {
 		s += strings.Repeat(" ", padWidth)
 	}
 	return s
+}
+
+// Pluralize returns a concatenated string with num and the plural form of
+// thing if necessary.
+func Pluralize(num int, thing string) string {
+	if num == 1 {
+		return fmt.Sprintf("%d %s", num, thing)
+	}
+	return fmt.Sprintf("%d %ss", num, thing)
+}
+
+func RelativeTimeAgo(a, b time.Time) string {
+	ago := a.Sub(b)
+
+	if ago < time.Minute {
+		return "less than a minute ago"
+	}
+	if ago < time.Hour {
+		return fmtDuration(int(ago.Minutes()), "minute")
+	}
+	if ago < 24*time.Hour {
+		return fmtDuration(int(ago.Hours()), "hour")
+	}
+	if ago < 30*24*time.Hour {
+		return fmtDuration(int(ago.Hours())/24, "day")
+	}
+	if ago < 365*24*time.Hour {
+		return fmtDuration(int(ago.Hours())/24/30, "month")
+	}
+
+	return fmtDuration(int(ago.Hours()/24/365), "year")
+}
+
+func fmtDuration(amount int, unit string) string {
+	return fmt.Sprintf("about %s ago", Pluralize(amount, unit))
 }
