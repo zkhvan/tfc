@@ -3,6 +3,7 @@ package list
 import (
 	"context"
 	"fmt"
+	"slices"
 
 	"github.com/MakeNowJust/heredoc"
 	"github.com/hashicorp/go-tfe"
@@ -36,6 +37,13 @@ type Options struct {
 	Columns      []string
 }
 
+var (
+	DefaultColumns = []string{
+		string(ColumnName),
+		string(ColumnUpdatedAt),
+	}
+)
+
 func NewCmdList(f *cmdutil.Factory) *cobra.Command {
 	opts := &Options{
 		IO:        f.IOStreams,
@@ -55,7 +63,6 @@ func NewCmdList(f *cmdutil.Factory) *cobra.Command {
 			tfc workspaces list <organization>
 		`),
 		Aliases:           []string{"ls"},
-		Args:              cobra.ExactArgs(1),
 		ValidArgsFunction: cobra.NoFileCompletions,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.Complete(cmd, args)
@@ -66,15 +73,13 @@ func NewCmdList(f *cmdutil.Factory) *cobra.Command {
 	cmd.Flags().StringVarP(&opts.Name, "name", "n", "", "Search by the workspace name.")
 	cmd.RegisterFlagCompletionFunc("name", cobra.NoFileCompletions)
 
+	cmd.Flags().StringVarP(&opts.Organization, "org", "o", "", "Search by the organization name.")
+	cmd.RegisterFlagCompletionFunc("org", cobra.NoFileCompletions)
+
 	cmd.Flags().IntVar(&opts.Limit, "limit", 20, "Limit the number of results.")
 	cmd.RegisterFlagCompletionFunc("limit", cobra.NoFileCompletions)
 
-	defaultColumns := []string{
-		string(ColumnName),
-		string(ColumnOrg),
-		string(ColumnUpdatedAt),
-	}
-	cmd.Flags().StringSliceVarP(&opts.Columns, "columns", "c", defaultColumns, "Columns to show.")
+	cmd.Flags().StringSliceVarP(&opts.Columns, "columns", "c", DefaultColumns, "Columns to show.")
 	cmd.RegisterFlagCompletionFunc("columns", cmdutil.GenerateOptionCompletionFunc([]string{
 		string(ColumnID),
 		string(ColumnName),
@@ -86,7 +91,6 @@ func NewCmdList(f *cmdutil.Factory) *cobra.Command {
 }
 
 func (opts *Options) Complete(cmd *cobra.Command, args []string) {
-	opts.Organization = args[0]
 }
 
 func (opts *Options) Run(ctx context.Context) error {
@@ -95,35 +99,85 @@ func (opts *Options) Run(ctx context.Context) error {
 		return err
 	}
 
-	list, err := listWorkspaces(ctx, client, opts.Organization, &ListOptions{
-		Name:  opts.Name,
-		Limit: opts.Limit,
-	})
+	// Filter the results to the organizations that the user has access to.
+	orgs, err := listOrganizations(ctx, client, opts.Organization)
 	if err != nil {
 		return err
 	}
 
-	if len(list.Items) < list.TotalCount {
-		fmt.Fprintf(opts.IO.Out, "Showing %d of %d results\n", opts.Limit, list.TotalCount)
+	if len(orgs.Items) == 0 {
+		return fmt.Errorf("no matching organizations")
+	}
+
+	// Add ORG column intelligently:
+	//   - if the user customized the columns, don't add the column
+	//   - if the user specified an organization, chances are they know what
+	//     they're looking for, only add the column if they end up with
+	//     results that have more than one organization
+	if slices.Equal(opts.Columns, DefaultColumns) {
+		if len(opts.Organization) == 0 || len(orgs.Items) > 1 {
+			opts.Columns = append([]string{"ORG"}, opts.Columns...)
+		}
 	}
 
 	p := cmdutil.FieldPrinter(opts.IO, opts.Columns...)
-	for _, item := range list.Items {
-		v := map[string]string{
-			"ID":         item.ID,
-			"NAME":       item.Name,
-			"UPDATED_AT": text.RelativeTimeAgo(opts.Clock.Now(), item.UpdatedAt),
+
+	limit := opts.Limit
+	for _, org := range orgs.Items {
+		result, err := listWorkspaces(ctx, client, org.Name, &ListOptions{
+			Name:  opts.Name,
+			Limit: limit,
+		})
+		if err != nil {
+			return err
 		}
 
-		if item.Organization != nil {
-			v["ORG"] = item.Organization.Name
+		if len(result.Items) < result.TotalCount {
+			fmt.Fprintf(opts.IO.Out, "Showing %d of %d results for org %q\n", opts.Limit, result.TotalCount, org.Name)
 		}
 
-		p.Write(v)
+		limit -= len(result.Items)
+
+		for _, ws := range result.Items {
+			fields := opts.extractWorkspaceFields(ws)
+			p.Write(fields)
+		}
 	}
+
 	p.Flush()
 
 	return nil
+}
+
+func (opts *Options) extractWorkspaceFields(ws *tfe.Workspace) map[string]string {
+	v := map[string]string{
+		"ID":         ws.ID,
+		"NAME":       ws.Name,
+		"UPDATED_AT": text.RelativeTimeAgo(opts.Clock.Now(), ws.UpdatedAt),
+	}
+
+	if ws.Organization != nil {
+		v["ORG"] = ws.Organization.Name
+	}
+
+	if ws.VCSRepo != nil {
+		v["VCS_REPO"] = ws.VCSRepo.DisplayIdentifier
+		v["VCS_REPO_URL"] = ws.VCSRepo.RepositoryHTTPURL
+	}
+
+	return v
+}
+
+func filterOrganizations(orgs *tfe.OrganizationList, name string) *tfe.OrganizationList {
+	result := tfe.OrganizationList{
+		Pagination: orgs.Pagination,
+	}
+	for _, org := range orgs.Items {
+		if org.Name == name {
+			result.Items = append(result.Items, org)
+		}
+	}
+	return &result
 }
 
 type ListOptions struct {
@@ -163,6 +217,36 @@ func listWorkspaces(ctx context.Context, client *tfe.Client, org string, opts *L
 		list.Items = append(list.Items, response.Items[:n]...)
 
 		// Check if there's a next page.
+		if list.NextPage == 0 {
+			break
+		}
+		listOpts.PageNumber = list.NextPage
+	}
+
+	return list, nil
+}
+
+func listOrganizations(ctx context.Context, client *tfe.Client, name string) (*tfe.OrganizationList, error) {
+	listOpts := tfe.OrganizationListOptions{
+		Query: name,
+		ListOptions: tfe.ListOptions{
+			PageSize: MAX_PAGE_SIZE,
+		},
+	}
+
+	list := &tfe.OrganizationList{
+		Pagination: &tfe.Pagination{},
+		Items:      make([]*tfe.Organization, 0),
+	}
+	for {
+		response, err := client.Organizations.List(ctx, &listOpts)
+		if err != nil {
+			return nil, err
+		}
+
+		list.Pagination = response.Pagination
+		list.Items = append(list.Items, response.Items...)
+
 		if list.NextPage == 0 {
 			break
 		}

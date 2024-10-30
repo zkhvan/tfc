@@ -28,6 +28,13 @@ func TestList(t *testing.T) {
 	defer teardown()
 
 	mux.HandleFunc(
+		"GET /api/v2/organizations",
+		func(w http.ResponseWriter, r *http.Request) {
+			fmt.Fprint(w, `{"data":[{"id":"o","type":"organizations","attributes":{"name":"o"}}]}`)
+		},
+	)
+
+	mux.HandleFunc(
 		"GET /api/v2/organizations/{organization}/workspaces",
 		func(w http.ResponseWriter, r *http.Request) {
 			fmt.Fprint(w, `{"data":[
@@ -47,8 +54,8 @@ func TestList(t *testing.T) {
 	}
 
 	test.Buffer(t, result.OutBuf, heredoc.Doc(`
-		NAME         ORG  UPDATED_AT
-		workspace-1  o    about 1 day ago
+		ORG  NAME         UPDATED_AT
+		o    workspace-1  about 1 day ago
 	`))
 }
 
