@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"slices"
+	"strings"
 
 	"github.com/MakeNowJust/heredoc"
 	"github.com/hashicorp/go-tfe"
@@ -31,10 +32,11 @@ type Options struct {
 	Clock     *cmdutil.Clock
 	Printer   cmdutil.Printer
 
-	Organization string
-	Name         string
-	Limit        int
-	Columns      []string
+	Organization      string
+	OrganizationExact bool
+	Name              string
+	Limit             int
+	Columns           []string
 }
 
 var (
@@ -91,6 +93,14 @@ func NewCmdList(f *cmdutil.Factory) *cobra.Command {
 }
 
 func (opts *Options) Complete(cmd *cobra.Command, args []string) {
+	// Check if there's any wildcard characters
+	if strings.ContainsAny(opts.Organization, "%*") {
+		opts.Organization = strings.ReplaceAll(opts.Organization, "*", "%")
+	}
+
+	if len(opts.Organization) > 0 && !strings.Contains(opts.Organization, "%") {
+		opts.OrganizationExact = true
+	}
 }
 
 func (opts *Options) Run(ctx context.Context) error {
@@ -100,12 +110,12 @@ func (opts *Options) Run(ctx context.Context) error {
 	}
 
 	// Filter the results to the organizations that the user has access to.
-	orgs, err := listOrganizations(ctx, client, opts.Organization)
+	orgs, err := listOrganizations(ctx, client, opts.Organization, opts.OrganizationExact)
 	if err != nil {
 		return err
 	}
 
-	if len(orgs.Items) == 0 {
+	if len(orgs) == 0 {
 		return fmt.Errorf("no matching organizations")
 	}
 
@@ -115,7 +125,7 @@ func (opts *Options) Run(ctx context.Context) error {
 	//     they're looking for, only add the column if they end up with
 	//     results that have more than one organization
 	if slices.Equal(opts.Columns, DefaultColumns) {
-		if len(opts.Organization) == 0 || len(orgs.Items) > 1 {
+		if len(opts.Organization) == 0 || len(orgs) > 1 {
 			opts.Columns = append([]string{"ORG"}, opts.Columns...)
 		}
 	}
@@ -123,7 +133,7 @@ func (opts *Options) Run(ctx context.Context) error {
 	p := cmdutil.FieldPrinter(opts.IO, opts.Columns...)
 
 	limit := opts.Limit
-	for _, org := range orgs.Items {
+	for _, org := range orgs {
 		result, err := listWorkspaces(ctx, client, org.Name, &ListOptions{
 			Name:  opts.Name,
 			Limit: limit,
@@ -226,7 +236,16 @@ func listWorkspaces(ctx context.Context, client *tfe.Client, org string, opts *L
 	return list, nil
 }
 
-func listOrganizations(ctx context.Context, client *tfe.Client, name string) (*tfe.OrganizationList, error) {
+func listOrganizations(ctx context.Context, client *tfe.Client, name string, nameExact bool) ([]*tfe.Organization, error) {
+	if nameExact {
+		org, err := client.Organizations.Read(ctx, name)
+		if err != nil {
+			return nil, fmt.Errorf("get organization: %w", err)
+		}
+
+		return []*tfe.Organization{org}, nil
+	}
+
 	listOpts := tfe.OrganizationListOptions{
 		Query: name,
 		ListOptions: tfe.ListOptions{
@@ -241,7 +260,7 @@ func listOrganizations(ctx context.Context, client *tfe.Client, name string) (*t
 	for {
 		response, err := client.Organizations.List(ctx, &listOpts)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("list organizations: %w", err)
 		}
 
 		list.Pagination = response.Pagination
@@ -253,5 +272,5 @@ func listOrganizations(ctx context.Context, client *tfe.Client, name string) (*t
 		listOpts.PageNumber = list.NextPage
 	}
 
-	return list, nil
+	return list.Items, nil
 }
