@@ -7,6 +7,7 @@ import (
 
 type Factory struct {
 	ExecutableName string
+	AppVersion     string
 
 	IOStreams *iolib.IOStreams
 	Clock     *Clock

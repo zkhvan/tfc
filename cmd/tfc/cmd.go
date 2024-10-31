@@ -4,14 +4,18 @@ import (
 	"github.com/MakeNowJust/heredoc"
 	"github.com/spf13/cobra"
 
+	versionCmd "github.com/zkhvan/tfc/cmd/tfc/version"
 	workspacesCmd "github.com/zkhvan/tfc/cmd/tfc/workspaces"
 	"github.com/zkhvan/tfc/pkg/cmdutil"
 )
 
-func NewCmdRoot(f *cmdutil.Factory) *cobra.Command {
+func NewCmdRoot(f *cmdutil.Factory, version, date string) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "tfc",
 		Short: "Terraform Cloud/Enterprise CLI",
+		Annotations: map[string]string{
+			"versionInfo": versionCmd.Format(version, date),
+		},
 		Long: heredoc.Doc(`
 			Terraform Cloud/Enterprise CLI.
 
@@ -25,6 +29,7 @@ func NewCmdRoot(f *cmdutil.Factory) *cobra.Command {
 
 	cmd.PersistentFlags().Bool("help", false, "Show help for command")
 
+	cmd.AddCommand(versionCmd.NewCmdVersion(f, version, date))
 	cmd.AddCommand(workspacesCmd.NewCmdWorkspaces(f))
 
 	return cmd

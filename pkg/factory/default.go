@@ -17,9 +17,10 @@ type Config struct {
 	Token    string `env:"TFE_TOKEN,required"`
 }
 
-func New() (*cmdutil.Factory, error) {
+func New(appVersion string) (*cmdutil.Factory, error) {
 	f := &cmdutil.Factory{
 		ExecutableName: "tfc",
+		AppVersion:     appVersion,
 		Clock:          cmdutil.NewClock(nil),
 	}
 
