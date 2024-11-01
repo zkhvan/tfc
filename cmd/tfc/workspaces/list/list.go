@@ -20,10 +20,23 @@ const MAX_PAGE_SIZE = 100
 type Column string
 
 var (
-	ColumnID        Column = "ID"
-	ColumnName      Column = "NAME"
-	ColumnOrg       Column = "ORG"
-	ColumnUpdatedAt Column = "UPDATED_AT"
+	ColumnID         Column = "ID"
+	ColumnName       Column = "NAME"
+	ColumnOrg        Column = "ORG"
+	ColumnUpdatedAt  Column = "UPDATED_AT"
+	ColumnVCSRepo    Column = "VCS_REPO"
+	ColumnVCSRepoURL Column = "VCS_REPO_URL"
+	ColumnWorkingDir Column = "WORKING_DIR"
+
+	ColumnAll = []string{
+		string(ColumnID),
+		string(ColumnName),
+		string(ColumnOrg),
+		string(ColumnUpdatedAt),
+		string(ColumnVCSRepo),
+		string(ColumnVCSRepoURL),
+		string(ColumnWorkingDir),
+	}
 )
 
 type Options struct {
@@ -82,12 +95,7 @@ func NewCmdList(f *cmdutil.Factory) *cobra.Command {
 	cmd.RegisterFlagCompletionFunc("limit", cobra.NoFileCompletions)
 
 	cmd.Flags().StringSliceVarP(&opts.Columns, "columns", "c", DefaultColumns, "Columns to show.")
-	cmd.RegisterFlagCompletionFunc("columns", cmdutil.GenerateOptionCompletionFunc([]string{
-		string(ColumnID),
-		string(ColumnName),
-		string(ColumnOrg),
-		string(ColumnUpdatedAt),
-	}))
+	cmd.RegisterFlagCompletionFunc("columns", cmdutil.GenerateOptionCompletionFunc(ColumnAll))
 
 	return cmd
 }
@@ -161,9 +169,10 @@ func (opts *Options) Run(ctx context.Context) error {
 
 func (opts *Options) extractWorkspaceFields(ws *tfe.Workspace) map[string]string {
 	v := map[string]string{
-		"ID":         ws.ID,
-		"NAME":       ws.Name,
-		"UPDATED_AT": text.RelativeTimeAgo(opts.Clock.Now(), ws.UpdatedAt),
+		"ID":          ws.ID,
+		"NAME":        ws.Name,
+		"UPDATED_AT":  text.RelativeTimeAgo(opts.Clock.Now(), ws.UpdatedAt),
+		"WORKING_DIR": ws.WorkingDirectory,
 	}
 
 	if ws.Organization != nil {
