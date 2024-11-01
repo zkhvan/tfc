@@ -50,6 +50,7 @@ type Options struct {
 	Name              string
 	Limit             int
 	Columns           []string
+	WithVariables     []string
 }
 
 var (
@@ -101,6 +102,9 @@ func NewCmdList(f *cmdutil.Factory) *cobra.Command {
 	cmd.Flags().StringSliceVarP(&opts.Columns, "columns", "c", DefaultColumns, "Columns to show.")
 	cmd.RegisterFlagCompletionFunc("columns", cmdutil.GenerateOptionCompletionFunc(ColumnAll))
 
+	cmd.Flags().StringSliceVar(&opts.WithVariables, "with-variables", []string{}, "Retrieve workspace variables to display as columns (expensive).")
+	cmd.RegisterFlagCompletionFunc("with-variables", cobra.NoFileCompletions)
+
 	return cmd
 }
 
@@ -112,6 +116,10 @@ func (opts *Options) Complete(cmd *cobra.Command, args []string) {
 
 	if len(opts.Organization) > 0 && !strings.Contains(opts.Organization, "%") {
 		opts.OrganizationExact = true
+	}
+
+	if len(opts.WithVariables) > 0 {
+		opts.Columns = append(opts.Columns, opts.WithVariables...)
 	}
 }
 
@@ -161,7 +169,17 @@ func (opts *Options) Run(ctx context.Context) error {
 		limit -= len(result.Items)
 
 		for _, ws := range result.Items {
-			fields := opts.extractWorkspaceFields(ws)
+			var wsVars []*tfe.Variable
+			if len(opts.WithVariables) > 0 {
+				vars, err := listWorkspacesVariables(ctx, client, ws.ID)
+				if err != nil {
+					return fmt.Errorf("error retrieving workspace variables for %q: %w", ws.ID, err)
+				}
+
+				wsVars = append(wsVars, vars.Items...)
+			}
+
+			fields := opts.extractWorkspaceFields(ws, wsVars)
 			p.Write(fields)
 		}
 	}
@@ -171,7 +189,7 @@ func (opts *Options) Run(ctx context.Context) error {
 	return nil
 }
 
-func (opts *Options) extractWorkspaceFields(ws *tfe.Workspace) map[string]string {
+func (opts *Options) extractWorkspaceFields(ws *tfe.Workspace, wsVars []*tfe.Variable) map[string]string {
 	v := map[string]string{
 		"ID":          ws.ID,
 		"NAME":        ws.Name,
@@ -186,6 +204,19 @@ func (opts *Options) extractWorkspaceFields(ws *tfe.Workspace) map[string]string
 	if ws.VCSRepo != nil {
 		v["VCS_REPO"] = ws.VCSRepo.DisplayIdentifier
 		v["VCS_REPO_URL"] = ws.VCSRepo.RepositoryHTTPURL
+	}
+
+	if len(opts.WithVariables) > 0 {
+		wsVarsMap := make(map[string]*tfe.Variable, 0)
+		for _, wsVar := range wsVars {
+			wsVarsMap[wsVar.Key] = wsVar
+		}
+
+		for _, key := range opts.WithVariables {
+			if wsVar, ok := wsVarsMap[key]; ok {
+				v[key] = wsVar.Value
+			}
+		}
 	}
 
 	return v
@@ -247,6 +278,15 @@ func listWorkspaces(ctx context.Context, client *tfe.Client, org string, opts *L
 	}
 
 	return list, nil
+}
+
+func listWorkspacesVariables(ctx context.Context, client *tfe.Client, id string) (*tfe.VariableList, error) {
+	response, err := client.Variables.List(ctx, id, &tfe.VariableListOptions{})
+	if err != nil {
+		return nil, err
+	}
+
+	return response, nil
 }
 
 func listOrganizations(ctx context.Context, client *tfe.Client, name string, nameExact bool) ([]*tfe.Organization, error) {
