@@ -75,7 +75,11 @@ func NewCmdList(f *cmdutil.Factory) *cobra.Command {
 			Workspaces always belong to a single organization.
 		`),
 		Example: heredoc.Doc(`
-			tfc workspaces list <organization>
+			# List the workspaces in all organizations
+			tfc workspaces list
+
+			# List the workspaces in one organization
+			tfc workspaces list --org example-org
 		`),
 		Aliases:           []string{"ls"},
 		ValidArgsFunction: cobra.NoFileCompletions,
