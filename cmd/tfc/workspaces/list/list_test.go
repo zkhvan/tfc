@@ -3,7 +3,6 @@ package list_test
 import (
 	"bytes"
 	"fmt"
-	"io"
 	"net/http"
 	"testing"
 	"time"
@@ -74,12 +73,18 @@ func runCommand(t *testing.T, client *tfe.Client, args ...string) (*tfetest.CmdO
 	cmd.SetArgs(args)
 
 	cmd.SetIn(&bytes.Buffer{})
-	cmd.SetOut(io.Discard)
-	cmd.SetErr(io.Discard)
+	cmd.SetOut(stdout)
+	cmd.SetErr(stderr)
+
+	cmd.SilenceErrors = true
+	cmd.SilenceUsage = true
 
 	_, err := cmd.ExecuteC()
+	if err != nil {
+		fmt.Fprintln(stderr, err)
+	}
 	return &tfetest.CmdOut{
 		OutBuf: stdout,
 		ErrBuf: stderr,
-	}, err
+	}
 }

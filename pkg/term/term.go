@@ -51,7 +51,7 @@ func Test(in, out, errOut *bytes.Buffer, environ []string) Term {
 			fd:     1,
 		},
 		errOut: &fdWriter{
-			Writer: colorprofile.NewWriter(out, environ),
+			Writer: colorprofile.NewWriter(errOut, environ),
 			fd:     2,
 		},
 	}
