@@ -5,6 +5,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/MakeNowJust/heredoc"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/muesli/reflow/truncate"
 )
@@ -78,4 +79,29 @@ func RelativeTimeAgo(a, b time.Time) string {
 
 func fmtDuration(amount int, unit string) string {
 	return fmt.Sprintf("about %s ago", Pluralize(amount, unit))
+}
+
+func Heredoc(raw string) string {
+	return heredoc.Doc(raw)
+}
+
+func Heredocf(raw string, args ...interface{}) string {
+	return heredoc.Docf(raw, args)
+}
+
+func IndentHeredoc(amount int, raw string) string {
+	return Indent(amount, Heredoc(raw))
+}
+
+func IndentHeredocf(amount int, raw string, args ...interface{}) string {
+	return Indent(amount, Heredocf(raw, args...))
+}
+
+// Indent will add indentation to every line in the string.
+func Indent(amount int, s string) string {
+	ss := strings.Split(s, "\n")
+	for i, line := range ss {
+		ss[i] = fmt.Sprintf("%s%s", strings.Repeat(" ", amount), line)
+	}
+	return strings.Join(ss, "\n")
 }

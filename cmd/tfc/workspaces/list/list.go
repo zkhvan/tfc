@@ -8,7 +8,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/MakeNowJust/heredoc"
 	"github.com/hashicorp/go-tfe"
 	"github.com/spf13/cobra"
 
@@ -74,12 +73,12 @@ func NewCmdList(f *cmdutil.Factory) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "list organization",
 		Short: "List Terraform workspaces",
-		Long: heredoc.Doc(`
+		Long: text.Heredoc(`
 			List Terraform workspaces.
 
 			Workspaces always belong to a single organization.
 		`),
-		Example: heredoc.Doc(`
+		Example: text.IndentHeredoc(2, `
 			# List the workspaces in all organizations
 			tfc workspaces list
 

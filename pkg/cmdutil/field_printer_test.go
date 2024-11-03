@@ -3,11 +3,10 @@ package cmdutil_test
 import (
 	"testing"
 
-	"github.com/MakeNowJust/heredoc"
-
 	"github.com/zkhvan/tfc/internal/test"
 	"github.com/zkhvan/tfc/pkg/cmdutil"
 	"github.com/zkhvan/tfc/pkg/iolib"
+	"github.com/zkhvan/tfc/pkg/text"
 )
 
 func TestFieldPrinter_SingleField(t *testing.T) {
@@ -24,7 +23,7 @@ func TestFieldPrinter_SingleField(t *testing.T) {
 		}
 		p.Flush()
 
-		test.Buffer(t, out, heredoc.Doc(`
+		test.Buffer(t, out, text.Heredoc(`
 			KEY1
 			1
 		`))

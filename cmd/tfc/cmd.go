@@ -1,12 +1,12 @@
 package main
 
 import (
-	"github.com/MakeNowJust/heredoc"
 	"github.com/spf13/cobra"
 
 	versionCmd "github.com/zkhvan/tfc/cmd/tfc/version"
 	workspacesCmd "github.com/zkhvan/tfc/cmd/tfc/workspaces"
 	"github.com/zkhvan/tfc/pkg/cmdutil"
+	"github.com/zkhvan/tfc/pkg/text"
 )
 
 func NewCmdRoot(f *cmdutil.Factory, version, date string) *cobra.Command {
@@ -16,7 +16,7 @@ func NewCmdRoot(f *cmdutil.Factory, version, date string) *cobra.Command {
 		Annotations: map[string]string{
 			"versionInfo": versionCmd.Format(version, date),
 		},
-		Long: heredoc.Doc(`
+		Long: text.Heredoc(`
 			Terraform Cloud/Enterprise CLI.
 
 			A CLI for interacting with either the HCP Terraform platform or

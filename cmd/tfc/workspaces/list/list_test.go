@@ -7,7 +7,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/MakeNowJust/heredoc"
 	"github.com/hashicorp/go-tfe"
 
 	"github.com/zkhvan/tfc/cmd/tfc/workspaces/list"
@@ -16,6 +15,7 @@ import (
 	"github.com/zkhvan/tfc/pkg/clock"
 	"github.com/zkhvan/tfc/pkg/cmdutil"
 	"github.com/zkhvan/tfc/pkg/iolib"
+	"github.com/zkhvan/tfc/pkg/text"
 )
 
 var (
@@ -49,7 +49,7 @@ func TestList_default(t *testing.T) {
 
 	result := runCommand(t, client)
 
-	test.Buffer(t, result.OutBuf, heredoc.Doc(`
+	test.Buffer(t, result.OutBuf, text.Heredoc(`
 		ORG  NAME         UPDATED_AT
 		o    workspace-1  about 1 day ago
 	`))
@@ -94,12 +94,12 @@ func TestList_multiple_organizations(t *testing.T) {
 	)
 
 	result := runCommand(t, client)
-	test.Buffer(t, result.ErrBuf, heredoc.Doc(`
+	test.Buffer(t, result.ErrBuf, text.Heredoc(`
 		error listing workspaces for "o2": resource not found
 		error listing workspaces for "o3": resource not found
 	`))
 
-	test.Buffer(t, result.OutBuf, heredoc.Doc(`
+	test.Buffer(t, result.OutBuf, text.Heredoc(`
 		ORG  NAME         UPDATED_AT
 		o1   workspace-1  about 1 day ago
 	`))

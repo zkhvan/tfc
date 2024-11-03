@@ -5,10 +5,9 @@ import (
 	"io"
 	"testing"
 
-	"github.com/MakeNowJust/heredoc"
-
 	"github.com/zkhvan/tfc/internal/test"
 	"github.com/zkhvan/tfc/pkg/table"
+	"github.com/zkhvan/tfc/pkg/text"
 )
 
 func Test_SingleColumn(t *testing.T) {
@@ -27,7 +26,7 @@ func Test_SingleColumn(t *testing.T) {
 		tbl.AddRow("1")
 		tbl.Render()
 
-		test.Buffer(t, &buf, heredoc.Doc(`
+		test.Buffer(t, &buf, text.Heredoc(`
 			ID
 			1
 		`))
@@ -39,7 +38,7 @@ func Test_SingleColumn(t *testing.T) {
 		tbl := newTable(&buf)
 		tbl.Render()
 
-		test.Buffer(t, &buf, heredoc.Doc(`
+		test.Buffer(t, &buf, text.Heredoc(`
 			ID
 		`))
 	})
@@ -51,7 +50,7 @@ func Test_SingleColumn(t *testing.T) {
 		tbl.AddRow("1", "2")
 		tbl.Render()
 
-		test.Buffer(t, &buf, heredoc.Doc(`
+		test.Buffer(t, &buf, text.Heredoc(`
 			ID  
 			1   2
 		`))
@@ -65,7 +64,7 @@ func Test_SingleColumn(t *testing.T) {
 		tbl.AddRow("1", "2")
 		tbl.Render()
 
-		test.Buffer(t, &buf, heredoc.Doc(`
+		test.Buffer(t, &buf, text.Heredoc(`
 			ID     
 			XXXXX
 			1      2
@@ -81,7 +80,7 @@ func Test_SingleColumn(t *testing.T) {
 		tbl.AddRow("2")
 		tbl.Render()
 
-		test.Buffer(t, &buf, heredoc.Doc(`
+		test.Buffer(t, &buf, text.Heredoc(`
 			ID     
 			XXXXX
 			1      XXXXX
@@ -102,7 +101,7 @@ func Test_AutomaticColumns(t *testing.T) {
 		tbl.AddRow("1")
 		tbl.Render()
 
-		test.Buffer(t, &buf, heredoc.Doc(`
+		test.Buffer(t, &buf, text.Heredoc(`
 			1
 		`))
 	})
@@ -116,7 +115,7 @@ func Test_AutomaticColumns(t *testing.T) {
 		tbl.AddRow("3")
 		tbl.Render()
 
-		test.Buffer(t, &buf, heredoc.Doc(`
+		test.Buffer(t, &buf, text.Heredoc(`
 			1
 			2
 			3
@@ -130,7 +129,7 @@ func Test_AutomaticColumns(t *testing.T) {
 		tbl.AddRow("123", "456", "789")
 		tbl.Render()
 
-		test.Buffer(t, &buf, heredoc.Doc(`
+		test.Buffer(t, &buf, text.Heredoc(`
 			123  456  789
 		`))
 	})
@@ -143,7 +142,7 @@ func Test_AutomaticColumns(t *testing.T) {
 		tbl.AddRow("123", "456", "789")
 		tbl.Render()
 
-		test.Buffer(t, &buf, heredoc.Doc(`
+		test.Buffer(t, &buf, text.Heredoc(`
 			1    2    3
 			123  456  789
 		`))
@@ -157,7 +156,7 @@ func Test_AutomaticColumns(t *testing.T) {
 		tbl.AddRow("123", "456", "789")
 		tbl.Render()
 
-		test.Buffer(t, &buf, heredoc.Doc(`
+		test.Buffer(t, &buf, text.Heredoc(`
 			1    2  
 			123  456  789
 		`))
@@ -178,7 +177,7 @@ func Test_TruncateAutomaticColumns(t *testing.T) {
 		tbl.AddRow("1234567890")
 		tbl.Render()
 
-		test.Buffer(t, &buf, heredoc.Doc(`
+		test.Buffer(t, &buf, text.Heredoc(`
 			123456...
 		`))
 	})
