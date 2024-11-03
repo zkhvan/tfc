@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"slices"
+	"strconv"
 	"strings"
 
 	"github.com/MakeNowJust/heredoc"
@@ -18,27 +19,29 @@ import (
 
 const MAX_PAGE_SIZE = 100
 
-type Column string
-
-var (
-	ColumnID         Column = "ID"
-	ColumnName       Column = "NAME"
-	ColumnOrg        Column = "ORG"
-	ColumnUpdatedAt  Column = "UPDATED_AT"
-	ColumnVCSRepo    Column = "VCS_REPO"
-	ColumnVCSRepoURL Column = "VCS_REPO_URL"
-	ColumnWorkingDir Column = "WORKING_DIR"
-
-	ColumnAll = []string{
-		string(ColumnID),
-		string(ColumnName),
-		string(ColumnOrg),
-		string(ColumnUpdatedAt),
-		string(ColumnVCSRepo),
-		string(ColumnVCSRepoURL),
-		string(ColumnWorkingDir),
-	}
+const (
+	ColumnID            string = "ID"
+	ColumnName          string = "NAME"
+	ColumnOrg           string = "ORG"
+	ColumnUpdatedAt     string = "UPDATED_AT"
+	ColumnVCSRepo       string = "VCS_REPO"
+	ColumnVCSRepoURL    string = "VCS_REPO_URL"
+	ColumnTFVersion     string = "TF_VERSION"
+	ColumnResourceCount string = "RESOURCE_COUNT"
+	ColumnWorkingDir    string = "WORKING_DIR"
 )
+
+var ColumnAll = []string{
+	ColumnID,
+	ColumnName,
+	ColumnOrg,
+	ColumnUpdatedAt,
+	ColumnVCSRepo,
+	ColumnVCSRepoURL,
+	ColumnResourceCount,
+	ColumnTFVersion,
+	ColumnWorkingDir,
+}
 
 type Options struct {
 	IO        *iolib.IOStreams
@@ -199,19 +202,21 @@ func (opts *Options) Run(ctx context.Context) error {
 
 func (opts *Options) extractWorkspaceFields(ws *tfe.Workspace, wsVars []*tfe.Variable) map[string]string {
 	v := map[string]string{
-		"ID":          ws.ID,
-		"NAME":        ws.Name,
-		"UPDATED_AT":  text.RelativeTimeAgo(opts.Clock.Now(), ws.UpdatedAt),
-		"WORKING_DIR": ws.WorkingDirectory,
+		ColumnID:            ws.ID,
+		ColumnName:          ws.Name,
+		ColumnUpdatedAt:     text.RelativeTimeAgo(opts.Clock.Now(), ws.UpdatedAt),
+		ColumnWorkingDir:    ws.WorkingDirectory,
+		ColumnTFVersion:     ws.TerraformVersion,
+		ColumnResourceCount: strconv.Itoa(ws.ResourceCount),
 	}
 
 	if ws.Organization != nil {
-		v["ORG"] = ws.Organization.Name
+		v[ColumnOrg] = ws.Organization.Name
 	}
 
 	if ws.VCSRepo != nil {
-		v["VCS_REPO"] = ws.VCSRepo.DisplayIdentifier
-		v["VCS_REPO_URL"] = ws.VCSRepo.RepositoryHTTPURL
+		v[ColumnVCSRepo] = ws.VCSRepo.DisplayIdentifier
+		v[ColumnVCSRepoURL] = ws.VCSRepo.RepositoryHTTPURL
 	}
 
 	if len(opts.WithVariables) > 0 {
