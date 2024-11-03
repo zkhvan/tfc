@@ -2,6 +2,7 @@ package list
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"slices"
 	"strings"
@@ -152,6 +153,7 @@ func (opts *Options) Run(ctx context.Context) error {
 
 	p := cmdutil.FieldPrinter(opts.IO, opts.Columns...)
 
+	var errs []error
 	limit := opts.Limit
 	for _, org := range orgs {
 		result, err := listWorkspaces(ctx, client, org.Name, &ListOptions{
@@ -159,7 +161,8 @@ func (opts *Options) Run(ctx context.Context) error {
 			Limit: limit,
 		})
 		if err != nil {
-			return err
+			errs = append(errs, fmt.Errorf("error listing workspaces for %q: %w", org.Name, err))
+			continue
 		}
 
 		if len(result.Items) < result.TotalCount {
@@ -173,7 +176,8 @@ func (opts *Options) Run(ctx context.Context) error {
 			if len(opts.WithVariables) > 0 {
 				vars, err := listWorkspacesVariables(ctx, client, ws.ID)
 				if err != nil {
-					return fmt.Errorf("error retrieving workspace variables for %q: %w", ws.ID, err)
+					errs = append(errs, fmt.Errorf("error retrieving workspace variables for %q: %w", ws.ID, err))
+					continue
 				}
 
 				wsVars = append(wsVars, vars.Items...)
@@ -185,6 +189,10 @@ func (opts *Options) Run(ctx context.Context) error {
 	}
 
 	p.Flush()
+
+	if len(errs) > 0 {
+		return errors.Join(errs...)
+	}
 
 	return nil
 }

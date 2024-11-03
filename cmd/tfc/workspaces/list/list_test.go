@@ -22,7 +22,7 @@ var (
 	referenceTime = time.Date(2000, time.January, 1, 12, 0, 0, 0, time.UTC)
 )
 
-func TestList(t *testing.T) {
+func TestList_default(t *testing.T) {
 	client, mux, teardown := tfetest.Setup()
 	defer teardown()
 
@@ -47,10 +47,7 @@ func TestList(t *testing.T) {
 		},
 	)
 
-	result, err := runCommand(t, client, "o")
-	if err != nil {
-		t.Fatal(err)
-	}
+	result := runCommand(t, client)
 
 	test.Buffer(t, result.OutBuf, heredoc.Doc(`
 		ORG  NAME         UPDATED_AT
@@ -58,7 +55,57 @@ func TestList(t *testing.T) {
 	`))
 }
 
-func runCommand(t *testing.T, client *tfe.Client, args ...string) (*tfetest.CmdOut, error) {
+func TestList_multiple_organizations(t *testing.T) {
+	client, mux, teardown := tfetest.Setup()
+	defer teardown()
+
+	mux.HandleFunc(
+		"GET /api/v2/organizations",
+		func(w http.ResponseWriter, r *http.Request) {
+			fmt.Fprint(w, `{"data":[
+				{"id":"o1","type":"organizations","attributes":{"name":"o1"}},
+				{"id":"o2","type":"organizations","attributes":{"name":"o2"}},
+				{"id":"o3","type":"organizations","attributes":{"name":"o3"}}
+			]}`)
+		},
+	)
+
+	mux.HandleFunc(
+		"GET /api/v2/organizations/{organization}/workspaces",
+		func(w http.ResponseWriter, r *http.Request) {
+			org := r.PathValue("organization")
+
+			switch org {
+			case "o1":
+				fmt.Fprint(w, `{"data":[
+					{"id":"ws-1","type":"workspaces","attributes":{
+						"name":"workspace-1",
+						"updated-at":"1999-12-31T12:00:00Z"
+					},"relationships":{
+						"organization":{"data":{"id":"o1","type":"organizations"}}
+					}}
+				]}`)
+			case "o2":
+				http.NotFound(w, r)
+			case "o3":
+				http.NotFound(w, r)
+			}
+		},
+	)
+
+	result := runCommand(t, client)
+	test.Buffer(t, result.ErrBuf, heredoc.Doc(`
+		error listing workspaces for "o2": resource not found
+		error listing workspaces for "o3": resource not found
+	`))
+
+	test.Buffer(t, result.OutBuf, heredoc.Doc(`
+		ORG  NAME         UPDATED_AT
+		o1   workspace-1  about 1 day ago
+	`))
+}
+
+func runCommand(t *testing.T, client *tfe.Client, args ...string) *tfetest.CmdOut {
 	t.Helper()
 
 	ios, _, stdout, stderr := iolib.Test()
