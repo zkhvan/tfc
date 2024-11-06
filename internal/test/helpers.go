@@ -6,6 +6,14 @@ import (
 	"testing"
 )
 
+func BufferEmpty(t *testing.T, got *bytes.Buffer) {
+	t.Helper()
+
+	if got := got.String(); len(got) > 0 {
+		t.Errorf("buffer not empty, got:\n%s", got)
+	}
+}
+
 func Buffer(t *testing.T, got *bytes.Buffer, want string) {
 	t.Helper()
 

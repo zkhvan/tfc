@@ -258,7 +258,6 @@ func listWorkspaces(ctx context.Context, client *tfe.Client, org string, opts *L
 
 	if opts.Limit < MAX_PAGE_SIZE {
 		listOpts.PageSize = opts.Limit
-		return client.Workspaces.List(ctx, org, listOpts)
 	} else {
 		listOpts.PageSize = MAX_PAGE_SIZE
 	}
@@ -287,6 +286,7 @@ func listWorkspaces(ctx context.Context, client *tfe.Client, org string, opts *L
 			break
 		}
 		listOpts.PageNumber = list.NextPage
+
 	}
 
 	return list, nil

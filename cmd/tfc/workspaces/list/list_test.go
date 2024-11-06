@@ -36,14 +36,28 @@ func TestList_default(t *testing.T) {
 	mux.HandleFunc(
 		"GET /api/v2/organizations/{organization}/workspaces",
 		func(w http.ResponseWriter, r *http.Request) {
-			fmt.Fprint(w, `{"data":[
-				{"id":"ws-1","type":"workspaces","attributes":{
-					"name":"workspace-1",
-					"updated-at":"1999-12-31T12:00:00Z"
-				},"relationships":{
-					"organization":{"data":{"id":"o","type":"organizations"}}
-				}}
-			]}`)
+			fmt.Fprint(w, `
+				{
+					"data": [
+						{
+							"id": "ws-1",
+							"type": "workspaces",
+							"attributes": {
+								"name": "workspace-1",
+								"updated-at": "1999-12-31T12:00:00Z"
+							},
+							"relationships": {
+								"organization": {
+									"data": {
+										"id": "o",
+										"type": "organizations"
+									}
+								}
+							}
+						}
+					]
+				}
+			`)
 		},
 	)
 
@@ -55,6 +69,114 @@ func TestList_default(t *testing.T) {
 	`))
 }
 
+func TestList_pagination(t *testing.T) {
+	client, mux, teardown := tfetest.Setup()
+	defer teardown()
+
+	mux.HandleFunc(
+		"GET /api/v2/organizations",
+		func(w http.ResponseWriter, r *http.Request) {
+			fmt.Fprint(w, `
+				{
+					"data": [
+						{
+							"id": "o",
+							"type": "organizations",
+							"attributes": {
+								"name": "o"
+							}
+						}
+					]
+				}
+			`)
+		},
+	)
+
+	mux.HandleFunc(
+		"GET /api/v2/organizations/{organization}/workspaces",
+		func(w http.ResponseWriter, r *http.Request) {
+			params := r.URL.Query()
+			page := params.Get("page[number]")
+
+			switch page {
+			case "2":
+				fmt.Fprint(w, `
+					{
+						"data": [
+							{
+								"id": "ws-2",
+								"type": "workspaces",
+								"attributes": {
+									"name": "workspace-2",
+									"updated-at": "1999-12-31T12:00:00Z"
+								},
+								"relationships": {
+									"organization": {
+										"data": {
+											"id": "o",
+											"type": "organizations"
+										}
+									}
+								}
+							}
+						],
+						"meta": {
+							"pagination": {
+								"current-page": 2,
+								"prev-page": 1,
+								"next-page": null,
+								"total-pages": 2,
+								"total-count": 2
+							}
+						}
+					}
+				`)
+			default:
+				fmt.Fprint(w, `
+					{
+						"data": [
+							{
+								"id": "ws-1",
+								"type": "workspaces",
+								"attributes": {
+									"name": "workspace-1",
+									"updated-at": "1999-12-31T12:00:00Z"
+								},
+								"relationships": {
+									"organization": {
+										"data": {
+											"id": "o",
+											"type": "organizations"
+										}
+									}
+								}
+							}
+						],
+						"meta": {
+							"pagination": {
+								"current-page": 1,
+								"prev-page": null,
+								"next-page": 2,
+								"total-pages": 2,
+								"total-count": 2
+							}
+						}
+					}
+				`)
+			}
+		},
+	)
+
+	result := runCommand(t, client)
+
+	test.BufferEmpty(t, result.ErrBuf)
+	test.Buffer(t, result.OutBuf, text.Heredoc(`
+		ORG  NAME         UPDATED_AT
+		o    workspace-1  about 1 day ago
+		o    workspace-2  about 1 day ago
+	`))
+}
+
 func TestList_multiple_organizations(t *testing.T) {
 	client, mux, teardown := tfetest.Setup()
 	defer teardown()
@@ -62,11 +184,15 @@ func TestList_multiple_organizations(t *testing.T) {
 	mux.HandleFunc(
 		"GET /api/v2/organizations",
 		func(w http.ResponseWriter, r *http.Request) {
-			fmt.Fprint(w, `{"data":[
-				{"id":"o1","type":"organizations","attributes":{"name":"o1"}},
-				{"id":"o2","type":"organizations","attributes":{"name":"o2"}},
-				{"id":"o3","type":"organizations","attributes":{"name":"o3"}}
-			]}`)
+			fmt.Fprint(w, `
+				{
+					"data": [
+						{"id":"o1","type":"organizations","attributes":{"name":"o1"}},
+						{"id":"o2","type":"organizations","attributes":{"name":"o2"}},
+						{"id":"o3","type":"organizations","attributes":{"name":"o3"}}
+					]
+				}
+			`)
 		},
 	)
 
@@ -77,14 +203,28 @@ func TestList_multiple_organizations(t *testing.T) {
 
 			switch org {
 			case "o1":
-				fmt.Fprint(w, `{"data":[
-					{"id":"ws-1","type":"workspaces","attributes":{
-						"name":"workspace-1",
-						"updated-at":"1999-12-31T12:00:00Z"
-					},"relationships":{
-						"organization":{"data":{"id":"o1","type":"organizations"}}
-					}}
-				]}`)
+				fmt.Fprint(w, `
+					{
+						"data": [
+							{
+								"id": "ws-1",
+								"type": "workspaces",
+								"attributes": {
+									"name": "workspace-1",
+									"updated-at": "1999-12-31T12:00:00Z"
+								},
+								"relationships": {
+									"organization": {
+										"data": {
+											"id": "o1",
+											"type": "organizations"
+										}
+									}
+								}
+							}
+						]
+					}
+				`)
 			case "o2":
 				http.NotFound(w, r)
 			case "o3":
