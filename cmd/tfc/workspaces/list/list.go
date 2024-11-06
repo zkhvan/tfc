@@ -11,6 +11,7 @@ import (
 	"github.com/hashicorp/go-tfe"
 	"github.com/spf13/cobra"
 
+	"github.com/zkhvan/tfc/internal/tfe/tfepaging"
 	"github.com/zkhvan/tfc/pkg/cmdutil"
 	"github.com/zkhvan/tfc/pkg/iolib"
 	"github.com/zkhvan/tfc/pkg/text"
@@ -158,7 +159,7 @@ func (opts *Options) Run(ctx context.Context) error {
 	var errs []error
 	limit := opts.Limit
 	for _, org := range orgs {
-		result, err := listWorkspaces(ctx, client, org.Name, &ListOptions{
+		workspaces, totalCount, err := listWorkspaces(ctx, client, org.Name, &ListOptions{
 			Name:  opts.Name,
 			Limit: limit,
 		})
@@ -167,13 +168,13 @@ func (opts *Options) Run(ctx context.Context) error {
 			continue
 		}
 
-		if len(result.Items) < result.TotalCount {
-			fmt.Fprintf(opts.IO.Out, "Showing %d of %d results for org %q\n", opts.Limit, result.TotalCount, org.Name)
+		if len(workspaces) < totalCount {
+			fmt.Fprintf(opts.IO.Out, "Showing %d of %d results for org %q\n", opts.Limit, totalCount, org.Name)
 		}
 
-		limit -= len(result.Items)
+		limit -= len(workspaces)
 
-		for _, ws := range result.Items {
+		for _, ws := range workspaces {
 			var wsVars []*tfe.Variable
 			if len(opts.WithVariables) > 0 {
 				vars, err := listWorkspacesVariables(ctx, client, ws.ID)
@@ -251,45 +252,35 @@ type ListOptions struct {
 	Limit int
 }
 
-func listWorkspaces(ctx context.Context, client *tfe.Client, org string, opts *ListOptions) (*tfe.WorkspaceList, error) {
-	listOpts := &tfe.WorkspaceListOptions{
-		Search: opts.Name,
-	}
-
-	if opts.Limit < MAX_PAGE_SIZE {
-		listOpts.PageSize = opts.Limit
-	} else {
-		listOpts.PageSize = MAX_PAGE_SIZE
-	}
-
-	list := &tfe.WorkspaceList{
-		Pagination: &tfe.Pagination{},
-		Items:      make([]*tfe.Workspace, 0, opts.Limit),
-	}
-	for count := 0; count < opts.Limit; {
-		response, err := client.Workspaces.List(ctx, org, listOpts)
+func listWorkspaces(ctx context.Context, client *tfe.Client, org string, opts *ListOptions) ([]*tfe.Workspace, int, error) {
+	f := func(lo tfe.ListOptions) ([]*tfe.Workspace, *tfe.Pagination, error) {
+		result, err := client.Workspaces.List(ctx, org, &tfe.WorkspaceListOptions{
+			ListOptions: lo,
+			Search:      opts.Name,
+		})
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
-		list.Pagination = response.Pagination
 
-		// Take the necessary amount of items to reach the limit.
-		n := min(
-			opts.Limit-count,
-			len(response.Items),
-		)
-		count += n
-		list.Items = append(list.Items, response.Items[:n]...)
+		return result.Items, result.Pagination, nil
+	}
 
-		// Check if there's a next page.
-		if list.NextPage == 0 {
+	pager := tfepaging.New(f).SetPageSize(MAX_PAGE_SIZE)
+
+	workspaces := make([]*tfe.Workspace, 0)
+	for i, ws := range pager.All() {
+		if i >= opts.Limit {
 			break
 		}
-		listOpts.PageNumber = list.NextPage
 
+		workspaces = append(workspaces, ws)
 	}
 
-	return list, nil
+	if err := pager.Err(); err != nil {
+		return nil, 0, err
+	}
+
+	return workspaces, pager.Current().TotalCount, nil
 }
 
 func listWorkspacesVariables(ctx context.Context, client *tfe.Client, id string) (*tfe.VariableList, error) {
@@ -311,31 +302,24 @@ func listOrganizations(ctx context.Context, client *tfe.Client, name string, nam
 		return []*tfe.Organization{org}, nil
 	}
 
-	listOpts := tfe.OrganizationListOptions{
-		Query: name,
-		ListOptions: tfe.ListOptions{
-			PageSize: MAX_PAGE_SIZE,
-		},
-	}
-
-	list := &tfe.OrganizationList{
-		Pagination: &tfe.Pagination{},
-		Items:      make([]*tfe.Organization, 0),
-	}
-	for {
-		response, err := client.Organizations.List(ctx, &listOpts)
+	f := func(opts tfe.ListOptions) ([]*tfe.Organization, *tfe.Pagination, error) {
+		response, err := client.Organizations.List(ctx, &tfe.OrganizationListOptions{
+			ListOptions: opts,
+			Query:       name,
+		})
 		if err != nil {
-			return nil, fmt.Errorf("list organizations: %w", err)
+			return nil, nil, fmt.Errorf("list organizations: %w", err)
 		}
 
-		list.Pagination = response.Pagination
-		list.Items = append(list.Items, response.Items...)
-
-		if list.NextPage == 0 {
-			break
-		}
-		listOpts.PageNumber = list.NextPage
+		return response.Items, response.Pagination, nil
 	}
 
-	return list.Items, nil
+	pager := tfepaging.New(f).SetPageSize(MAX_PAGE_SIZE)
+
+	var orgs []*tfe.Organization
+	for _, org := range pager.All() {
+		orgs = append(orgs, org)
+	}
+
+	return orgs, nil
 }
