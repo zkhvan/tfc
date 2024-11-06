@@ -12,9 +12,12 @@ func NewCmdOrganizations(f *cmdutil.Factory) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "organizations",
 		Aliases: []string{"orgs"},
-		Short:   "Interact with Terraform organizations",
+		Short:   "Manage Terraform organizations",
 		Long: text.Heredoc(`
-			Interact with Terraform organizations.
+			Manage Terraform organizations.
+
+			Organizations are the top-level entities that encompass managed
+			Terraform resources.
 		`),
 	}
 
