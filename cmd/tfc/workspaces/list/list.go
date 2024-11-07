@@ -95,19 +95,12 @@ func NewCmdList(f *cmdutil.Factory) *cobra.Command {
 	}
 
 	cmd.Flags().StringVarP(&opts.Name, "name", "n", "", "Search by the workspace name.")
-	cmd.RegisterFlagCompletionFunc("name", cobra.NoFileCompletions)
-
 	cmd.Flags().StringVarP(&opts.Organization, "org", "o", "", "Search by the organization name.")
-	cmd.RegisterFlagCompletionFunc("org", cobra.NoFileCompletions)
+	cmd.Flags().IntVarP(&opts.Limit, "limit", "l", 20, "Limit the number of results.")
+	cmd.Flags().StringSliceVarP(&opts.WithVariables, "with-variables", "v", []string{}, "Retrieve workspace variables to display as columns (expensive).")
+	cmdutil.FlagStringEnumSliceP(cmd, &opts.Columns, "columns", "c", DefaultColumns, "Columns to show.", ColumnAll)
 
-	cmd.Flags().IntVar(&opts.Limit, "limit", 20, "Limit the number of results.")
-	cmd.RegisterFlagCompletionFunc("limit", cobra.NoFileCompletions)
-
-	cmd.Flags().StringSliceVarP(&opts.Columns, "columns", "c", DefaultColumns, "Columns to show.")
-	cmd.RegisterFlagCompletionFunc("columns", cmdutil.GenerateOptionCompletionFunc(ColumnAll))
-
-	cmd.Flags().StringSliceVar(&opts.WithVariables, "with-variables", []string{}, "Retrieve workspace variables to display as columns (expensive).")
-	cmd.RegisterFlagCompletionFunc("with-variables", cobra.NoFileCompletions)
+	cmdutil.MarkFlagsWithNoFileCompletions(cmd, "name", "org", "limit", "with-variables")
 
 	return cmd
 }
