@@ -72,7 +72,7 @@ func NewCmdList(f *cmdutil.Factory) *cobra.Command {
 	}
 
 	cmd := &cobra.Command{
-		Use:   "list organization",
+		Use:   "list",
 		Short: "List Terraform workspaces",
 		Long: text.Heredoc(`
 			List Terraform workspaces.
