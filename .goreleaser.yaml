@@ -23,6 +23,8 @@ changelog:
       - '^test'
       - '^ci'
       - '^build'
+      - '^chore'
+      - '^refactor'
       - Merge pull request
       - Merge branch
 
