@@ -3,6 +3,7 @@ package table
 import (
 	"fmt"
 	"io"
+	"strings"
 
 	"github.com/zkhvan/tfc/pkg/term"
 	"github.com/zkhvan/tfc/pkg/text"
@@ -59,6 +60,7 @@ func WithColumns(cols ...*ColumnDef) tableOption {
 }
 
 func (t *table) AddRow(row ...string) {
+	row = sanitize(row)
 	t.updateCols(row)
 
 	t.rows = append(t.rows, row)
@@ -181,4 +183,12 @@ func (t *table) truncateCols() {
 	for _, col := range truncateCols {
 		col.width = col.width * maxAvailableWidth / contentWidth
 	}
+}
+
+func sanitize(values []string) []string {
+	out := make([]string, len(values))
+	for i, v := range values {
+		out[i] = strings.ReplaceAll(v, "\n", `\n`)
+	}
+	return out
 }

@@ -87,6 +87,34 @@ func Test_SingleColumn(t *testing.T) {
 			2    
 		`))
 	})
+
+	t.Run("single row, with multi-line content", func(t *testing.T) {
+		var buf bytes.Buffer
+
+		tbl := newTable(&buf)
+		tbl.AddRow("1\n2")
+		tbl.Render()
+
+		test.Buffer(t, &buf, text.Heredoc(`
+			ID
+			1\n2
+		`))
+	})
+
+	t.Run("second row, with multi-line content", func(t *testing.T) {
+		var buf bytes.Buffer
+
+		tbl := newTable(&buf)
+		tbl.AddRow("XXXXX")
+		tbl.AddRow("1\n2")
+		tbl.Render()
+
+		test.Buffer(t, &buf, text.Heredoc(`
+			ID
+			XXXXX
+			1\n2
+		`))
+	})
 }
 
 func Test_AutomaticColumns(t *testing.T) {
@@ -145,6 +173,22 @@ func Test_AutomaticColumns(t *testing.T) {
 		test.Buffer(t, &buf, text.Heredoc(`
 			1    2    3
 			123  456  789
+		`))
+	})
+
+	t.Run("multiple column and multiple rows, with multi-line content", func(t *testing.T) {
+		var buf bytes.Buffer
+
+		tbl := newTable(&buf)
+		tbl.AddRow("1", "2", "3")
+		tbl.AddRow("A\nB", "C\nD", "E\nF")
+		tbl.AddRow("123", "456", "789")
+		tbl.Render()
+
+		test.Buffer(t, &buf, text.Heredoc(`
+			1     2     3
+			A\nB  C\nD  E\nF
+			123   456   789
 		`))
 	})
 
