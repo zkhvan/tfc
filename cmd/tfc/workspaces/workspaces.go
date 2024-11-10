@@ -4,6 +4,7 @@ import (
 	"github.com/spf13/cobra"
 
 	listCmd "github.com/zkhvan/tfc/cmd/tfc/workspaces/list"
+	variablesCmd "github.com/zkhvan/tfc/cmd/tfc/workspaces/variables"
 	"github.com/zkhvan/tfc/pkg/cmdutil"
 	"github.com/zkhvan/tfc/pkg/text"
 )
@@ -21,6 +22,7 @@ func NewCmdWorkspaces(f *cmdutil.Factory) *cobra.Command {
 	}
 
 	cmd.AddCommand(listCmd.NewCmdList(f))
+	cmd.AddCommand(variablesCmd.NewCmdVariables(f))
 
 	return cmd
 }
