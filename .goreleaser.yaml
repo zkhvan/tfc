@@ -75,5 +75,8 @@ brews:
       email: goreleaserbot@example.com
     commit_msg_template: Brew formula update for {{ .ProjectName }} version {{ .Tag }}
 
+    install: |
+      bin.install "tfc"
+
 checksum:
   name_template: "checksums.txt"
