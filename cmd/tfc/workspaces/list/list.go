@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"slices"
 	"strconv"
 	"strings"
 
@@ -54,6 +53,7 @@ type Options struct {
 	Name              string
 	Limit             int
 	Columns           []string
+	ColumnsChanged    bool
 	WithVariables     []string
 }
 
@@ -118,6 +118,8 @@ func (opts *Options) Complete(cmd *cobra.Command, args []string) {
 	if len(opts.WithVariables) > 0 {
 		opts.Columns = append(opts.Columns, opts.WithVariables...)
 	}
+
+	opts.ColumnsChanged = cmd.Flags().Changed("columns")
 }
 
 func (opts *Options) Run(ctx context.Context) error {
@@ -141,7 +143,7 @@ func (opts *Options) Run(ctx context.Context) error {
 	//   - if the user specified an organization, chances are they know what
 	//     they're looking for, only add the column if they end up with
 	//     results that have more than one organization
-	if slices.Equal(opts.Columns, DefaultColumns) {
+	if !opts.ColumnsChanged {
 		if len(opts.Organization) == 0 || len(orgs) > 1 {
 			opts.Columns = append([]string{"ORG"}, opts.Columns...)
 		}
