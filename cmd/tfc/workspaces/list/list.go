@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -28,6 +29,7 @@ const (
 	ColumnTFVersion     string = "TF_VERSION"
 	ColumnResourceCount string = "RESOURCE_COUNT"
 	ColumnWorkingDir    string = "WORKING_DIR"
+	ColumnRunStatus     string = "RUN_STATUS"
 )
 
 var ColumnAll = []string{
@@ -40,6 +42,7 @@ var ColumnAll = []string{
 	ColumnResourceCount,
 	ColumnTFVersion,
 	ColumnWorkingDir,
+	ColumnRunStatus,
 }
 
 type Options struct {
@@ -154,10 +157,13 @@ func (opts *Options) Run(ctx context.Context) error {
 	var errs []error
 	limit := opts.Limit
 	for _, org := range orgs {
-		workspaces, totalCount, err := listWorkspaces(ctx, client, org.Name, &ListOptions{
-			Name:  opts.Name,
-			Limit: limit,
-		})
+		listOpts := &ListOptions{
+			Name:        opts.Name,
+			Limit:       limit,
+			IncludeRuns: slices.Contains(opts.Columns, ColumnRunStatus),
+		}
+
+		workspaces, totalCount, err := listWorkspaces(ctx, client, org.Name, listOpts)
 		if err != nil {
 			errs = append(errs, fmt.Errorf("error listing workspaces for %q: %w", org.Name, err))
 			continue
@@ -214,6 +220,10 @@ func (opts *Options) extractWorkspaceFields(ws *tfe.Workspace, wsVars []*tfe.Var
 		v[ColumnVCSRepoURL] = ws.VCSRepo.RepositoryHTTPURL
 	}
 
+	if ws.CurrentRun != nil {
+		v[ColumnRunStatus] = string(ws.CurrentRun.Status)
+	}
+
 	if len(opts.WithVariables) > 0 {
 		wsVarsMap := make(map[string]*tfe.Variable, 0)
 		for _, wsVar := range wsVars {
@@ -243,16 +253,23 @@ func filterOrganizations(orgs *tfe.OrganizationList, name string) *tfe.Organizat
 }
 
 type ListOptions struct {
-	Name  string
-	Limit int
+	Name        string
+	Limit       int
+	IncludeRuns bool
 }
 
 func listWorkspaces(ctx context.Context, client *tfe.Client, org string, opts *ListOptions) ([]*tfe.Workspace, int, error) {
 	f := func(lo tfe.ListOptions) ([]*tfe.Workspace, *tfe.Pagination, error) {
-		result, err := client.Workspaces.List(ctx, org, &tfe.WorkspaceListOptions{
+		wsListOpts := &tfe.WorkspaceListOptions{
 			ListOptions: lo,
 			Search:      opts.Name,
-		})
+		}
+
+		if opts.IncludeRuns {
+			wsListOpts.Include = append(wsListOpts.Include, tfe.WSCurrentRun)
+		}
+
+		result, err := client.Workspaces.List(ctx, org, wsListOpts)
 		if err != nil {
 			return nil, nil, err
 		}
