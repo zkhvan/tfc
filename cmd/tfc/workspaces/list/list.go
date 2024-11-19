@@ -54,16 +54,25 @@ type Options struct {
 	Organization      string
 	OrganizationExact bool
 	Name              string
-	Limit             int
-	Columns           []string
-	ColumnsChanged    bool
-	WithVariables     []string
+
+	// Filter the results based on various groups of run statuses.
+	Pending bool
+	Errored bool
+	Running bool
+	Holding bool
+	Applied bool
+
+	Limit          int
+	Columns        []string
+	ColumnsChanged bool
+	WithVariables  []string
 }
 
 var (
 	DefaultColumns = []string{
-		string(ColumnName),
-		string(ColumnUpdatedAt),
+		ColumnName,
+		ColumnRunStatus,
+		ColumnUpdatedAt,
 	}
 )
 
@@ -99,6 +108,13 @@ func NewCmdList(f *cmdutil.Factory) *cobra.Command {
 
 	cmd.Flags().StringVarP(&opts.Name, "name", "n", "", "Search by the workspace name.")
 	cmd.Flags().StringVarP(&opts.Organization, "org", "o", "", "Search by the organization name.")
+
+	cmd.Flags().BoolVar(&opts.Pending, "pending", false, "Search for workspaces with pending runs.")
+	cmd.Flags().BoolVar(&opts.Errored, "errored", false, "Search for workspaces with errored runs.")
+	cmd.Flags().BoolVar(&opts.Running, "running", false, "Search for workspaces with running runs.")
+	cmd.Flags().BoolVar(&opts.Holding, "holding", false, "Search for workspaces with holding runs.")
+	cmd.Flags().BoolVar(&opts.Applied, "applied", false, "Search for workspaces with applied runs.")
+
 	cmd.Flags().IntVarP(&opts.Limit, "limit", "l", 20, "Limit the number of results.")
 	cmd.Flags().StringSliceVarP(&opts.WithVariables, "with-variables", "v", []string{}, "Retrieve workspace variables to display as columns (expensive).")
 	cmdutil.FlagStringEnumSliceP(cmd, &opts.Columns, "columns", "c", DefaultColumns, "Columns to show.", ColumnAll)
@@ -160,6 +176,7 @@ func (opts *Options) Run(ctx context.Context) error {
 		listOpts := &ListOptions{
 			Name:        opts.Name,
 			Limit:       limit,
+			RunStatus:   opts.runStatus(),
 			IncludeRuns: slices.Contains(opts.Columns, ColumnRunStatus),
 		}
 
@@ -240,6 +257,58 @@ func (opts *Options) extractWorkspaceFields(ws *tfe.Workspace, wsVars []*tfe.Var
 	return v
 }
 
+func (opts *Options) runStatus() string {
+	var statuses []string
+
+	if opts.Pending {
+		statuses = append(statuses,
+			"cost_estimated",
+			"planned",
+			"policy_checked",
+			"policy_override",
+			"post_plan_completed",
+			"pre_apply_completed",
+		)
+	}
+
+	if opts.Errored {
+		statuses = append(statuses, "errored")
+	}
+
+	if opts.Running {
+		statuses = append(statuses,
+			"applying",
+			"confirmed",
+			"cost_estimating",
+			"fetching",
+			"planning",
+			"policy_checking",
+			"post_plan_running",
+			"pre_apply_running",
+			"pre_plan_completed",
+			"pre_plan_running",
+		)
+	}
+
+	if opts.Holding {
+		statuses = append(statuses,
+			"apply_queued",
+			"pending",
+			"plan_queued",
+			"queuing",
+		)
+	}
+
+	if opts.Applied {
+		statuses = append(statuses,
+			"applied",
+			"planned_and_finished",
+		)
+	}
+
+	return strings.Join(statuses, ",")
+}
+
 func filterOrganizations(orgs *tfe.OrganizationList, name string) *tfe.OrganizationList {
 	result := tfe.OrganizationList{
 		Pagination: orgs.Pagination,
@@ -255,14 +324,16 @@ func filterOrganizations(orgs *tfe.OrganizationList, name string) *tfe.Organizat
 type ListOptions struct {
 	Name        string
 	Limit       int
+	RunStatus   string
 	IncludeRuns bool
 }
 
 func listWorkspaces(ctx context.Context, client *tfe.Client, org string, opts *ListOptions) ([]*tfe.Workspace, int, error) {
 	f := func(lo tfe.ListOptions) ([]*tfe.Workspace, *tfe.Pagination, error) {
 		wsListOpts := &tfe.WorkspaceListOptions{
-			ListOptions: lo,
-			Search:      opts.Name,
+			ListOptions:      lo,
+			Search:           opts.Name,
+			CurrentRunStatus: opts.RunStatus,
 		}
 
 		if opts.IncludeRuns {
