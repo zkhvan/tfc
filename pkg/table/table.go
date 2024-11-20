@@ -104,9 +104,9 @@ func (t *table) renderField(col int, value string) {
 	colDef := t.colDefs[col]
 
 	switch {
-	case len(value) > colDef.width:
+	case text.DisplayWidth(value) > colDef.width:
 		fmt.Fprintf(t.w, text.Truncate(colDef.width, value))
-	case len(value) <= colDef.width:
+	case text.DisplayWidth(value) <= colDef.width:
 		if col == len(t.colDefs)-1 {
 			fmt.Fprintf(t.w, value)
 		} else {
@@ -137,7 +137,7 @@ func (t *table) updateCols(row []string) {
 	}
 
 	for i, value := range row {
-		n := len(value)
+		n := text.DisplayWidth(value)
 		if t.colDefs[i].width < n {
 			t.colDefs[i].width = n
 		}
