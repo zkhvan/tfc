@@ -133,7 +133,7 @@ func NewCmdList(f *cmdutil.Factory) *cobra.Command {
 	cmd.Flags().StringSliceVarP(&opts.WithVariables, "with-variables", "v", []string{}, "Retrieve workspace variables to display as columns (expensive).")
 	cmdutil.FlagStringEnumSliceP(cmd, &opts.Columns, "columns", "c", DefaultColumns, "Columns to show.", ColumnAll)
 
-	cmdutil.MarkFlagsWithNoFileCompletions(cmd, "name", "org", "limit", "with-variables")
+	cmdutil.MarkAllFlagsWithNoFileCompletions(cmd)
 
 	return cmd
 }

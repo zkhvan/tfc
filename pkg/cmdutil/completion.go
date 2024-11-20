@@ -7,7 +7,18 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 )
+
+func MarkAllFlagsWithNoFileCompletions(cmd *cobra.Command) error {
+	var errs []error
+	cmd.Flags().VisitAll(func(f *pflag.Flag) {
+		if _, ok := cmd.GetFlagCompletionFunc(f.Name); !ok {
+			errs = append(errs, cmd.RegisterFlagCompletionFunc(f.Name, cobra.NoFileCompletions))
+		}
+	})
+	return errors.Join(errs...)
+}
 
 func MarkFlagsWithNoFileCompletions(cmd *cobra.Command, flags ...string) error {
 	var errs []error
