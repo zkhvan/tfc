@@ -66,6 +66,7 @@ type Options struct {
 	Name              string
 	Tags              []string
 	ExcludeTags       []string
+	VCSRepos          []string
 
 	// Filter the results based on various groups of run statuses.
 	Pending bool
@@ -122,6 +123,7 @@ func NewCmdList(f *cmdutil.Factory) *cobra.Command {
 	cmd.Flags().StringVarP(&opts.Organization, "org", "o", "", "Search by the organization name.")
 	cmd.Flags().StringSliceVarP(&opts.Tags, "tags", "t", []string{}, "Search by the tags.")
 	cmd.Flags().StringSliceVarP(&opts.ExcludeTags, "exclude-tags", "T", []string{}, "Search by excluding the tags.")
+	cmd.Flags().StringSliceVarP(&opts.VCSRepos, "vcs-repos", "r", []string{}, "Search by the VCS repository name.")
 
 	cmd.Flags().BoolVar(&opts.Pending, "pending", false, "Search for workspaces with pending runs.")
 	cmd.Flags().BoolVar(&opts.Errored, "errored", false, "Search for workspaces with errored runs.")
@@ -191,6 +193,7 @@ func (opts *Options) Run(ctx context.Context) error {
 			Name:        opts.Name,
 			Tags:        opts.Tags,
 			ExcludeTags: opts.ExcludeTags,
+			VCSRepos:    opts.VCSRepos,
 			RunStatus:   opts.runStatus(),
 			IncludeRuns: slices.Contains(opts.Columns, ColumnRunStatus),
 			Limit:       limit,
@@ -374,6 +377,7 @@ type ListOptions struct {
 	Name        string
 	Tags        []string
 	ExcludeTags []string
+	VCSRepos    []string
 	RunStatus   string
 	IncludeRuns bool
 
@@ -404,20 +408,32 @@ func listWorkspaces(ctx context.Context, client *tfe.Client, org string, opts *L
 
 	pager := tfepaging.New(f).SetPageSize(MAX_PAGE_SIZE)
 
+	count := 0
 	workspaces := make([]*tfe.Workspace, 0)
-	for i, ws := range pager.All() {
-		if i >= opts.Limit {
+	for _, ws := range pager.All() {
+		if count >= opts.Limit {
 			break
 		}
 
+		if len(opts.VCSRepos) > 0 {
+			if ws.VCSRepo == nil {
+				continue
+			}
+
+			if !slices.Contains(opts.VCSRepos, ws.VCSRepo.Identifier) {
+				continue
+			}
+		}
+
 		workspaces = append(workspaces, ws)
+		count++
 	}
 
 	if err := pager.Err(); err != nil {
 		return nil, 0, err
 	}
 
-	return workspaces, pager.Current().TotalCount, nil
+	return workspaces, count, nil
 }
 
 func listWorkspacesVariables(ctx context.Context, client *tfe.Client, id string) (*tfe.VariableList, error) {
