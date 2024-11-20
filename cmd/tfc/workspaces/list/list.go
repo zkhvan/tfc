@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/charmbracelet/lipgloss"
 	"github.com/hashicorp/go-tfe"
 	"github.com/spf13/cobra"
 
@@ -44,6 +45,15 @@ var ColumnAll = []string{
 	ColumnWorkingDir,
 	ColumnRunStatus,
 }
+
+var (
+	TimeStyle             = lipgloss.NewStyle().Faint(true)
+	RunStatusPendingStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("3")) // yellow
+	RunStatusErroredStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("1")) // red
+	RunStatusRunningStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("4")) // blue
+	RunStatusHoldingStyle = lipgloss.NewStyle().Faint(true)
+	RunStatusAppliedStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("2")) // green
+)
 
 type Options struct {
 	IO        *iolib.IOStreams
@@ -222,7 +232,7 @@ func (opts *Options) extractWorkspaceFields(ws *tfe.Workspace, wsVars []*tfe.Var
 	v := map[string]string{
 		ColumnID:            ws.ID,
 		ColumnName:          ws.Name,
-		ColumnUpdatedAt:     text.RelativeTimeAgo(opts.Clock.Now(), ws.UpdatedAt),
+		ColumnUpdatedAt:     TimeStyle.Render(text.RelativeTimeAgo(opts.Clock.Now(), ws.UpdatedAt)),
 		ColumnWorkingDir:    ws.WorkingDirectory,
 		ColumnTFVersion:     ws.TerraformVersion,
 		ColumnResourceCount: strconv.Itoa(ws.ResourceCount),
@@ -238,7 +248,7 @@ func (opts *Options) extractWorkspaceFields(ws *tfe.Workspace, wsVars []*tfe.Var
 	}
 
 	if ws.CurrentRun != nil {
-		v[ColumnRunStatus] = string(ws.CurrentRun.Status)
+		v[ColumnRunStatus] = renderRunStatus(ws.CurrentRun.Status)
 	}
 
 	if len(opts.WithVariables) > 0 {
@@ -258,55 +268,88 @@ func (opts *Options) extractWorkspaceFields(ws *tfe.Workspace, wsVars []*tfe.Var
 }
 
 func (opts *Options) runStatus() string {
-	var statuses []string
+	var statuses []tfe.RunStatus
 
 	if opts.Pending {
-		statuses = append(statuses,
-			"cost_estimated",
-			"planned",
-			"policy_checked",
-			"policy_override",
-			"post_plan_completed",
-			"pre_apply_completed",
-		)
+		statuses = append(statuses, runStatusMap["pending"]...)
 	}
-
 	if opts.Errored {
-		statuses = append(statuses, "errored")
+		statuses = append(statuses, runStatusMap["errored"]...)
 	}
-
 	if opts.Running {
-		statuses = append(statuses,
-			"applying",
-			"confirmed",
-			"cost_estimating",
-			"fetching",
-			"planning",
-			"policy_checking",
-			"post_plan_running",
-			"pre_apply_running",
-			"pre_plan_completed",
-			"pre_plan_running",
-		)
+		statuses = append(statuses, runStatusMap["running"]...)
 	}
-
 	if opts.Holding {
-		statuses = append(statuses,
-			"apply_queued",
-			"pending",
-			"plan_queued",
-			"queuing",
-		)
+		statuses = append(statuses, runStatusMap["holding"]...)
 	}
-
 	if opts.Applied {
-		statuses = append(statuses,
-			"applied",
-			"planned_and_finished",
-		)
+		statuses = append(statuses, runStatusMap["applied"]...)
 	}
 
-	return strings.Join(statuses, ",")
+	result := make([]string, 0, len(statuses))
+	for _, s := range statuses {
+		result = append(result, string(s))
+	}
+	return strings.Join(result, ",")
+}
+
+func renderRunStatus(status tfe.RunStatus) string {
+	var group string
+	for currentGroup, statuses := range runStatusMap {
+		if slices.Contains(statuses, status) {
+			group = currentGroup
+		}
+	}
+	switch group {
+	case "pending":
+		return RunStatusPendingStyle.Render(string(status))
+	case "errored":
+		return RunStatusErroredStyle.Render(string(status))
+	case "running":
+		return RunStatusRunningStyle.Render(string(status))
+	case "holding":
+		return RunStatusHoldingStyle.Render(string(status))
+	case "applied":
+		return RunStatusAppliedStyle.Render(string(status))
+	default:
+		return ""
+	}
+}
+
+var runStatusMap = map[string][]tfe.RunStatus{
+	"pending": {
+		tfe.RunCostEstimated,
+		tfe.RunPlanned,
+		tfe.RunPolicyChecked,
+		tfe.RunPolicyOverride,
+		tfe.RunPostPlanCompleted,
+		tfe.RunPreApplyCompleted,
+	},
+	"errored": {
+		tfe.RunErrored,
+	},
+	"running": {
+		tfe.RunApplying,
+		tfe.RunConfirmed,
+		tfe.RunCostEstimating,
+		tfe.RunFetching,
+		tfe.RunPlanning,
+		tfe.RunPolicyChecking,
+		tfe.RunPostPlanRunning,
+		tfe.RunPreApplyRunning,
+		tfe.RunPrePlanCompleted,
+		tfe.RunPrePlanRunning,
+	},
+	"holding": {
+		tfe.RunApplyQueued,
+		tfe.RunPending,
+		tfe.RunPlanQueued,
+		tfe.RunQueuing,
+	},
+	"applied": {
+		tfe.RunApplied,
+		tfe.RunPlannedAndFinished,
+	},
 }
 
 func filterOrganizations(orgs *tfe.OrganizationList, name string) *tfe.OrganizationList {
