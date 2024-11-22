@@ -86,7 +86,7 @@ func Heredoc(raw string) string {
 }
 
 func Heredocf(raw string, args ...interface{}) string {
-	return heredoc.Docf(raw, args)
+	return heredoc.Docf(raw, args...)
 }
 
 func IndentHeredoc(amount int, raw string) string {
