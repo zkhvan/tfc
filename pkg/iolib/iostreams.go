@@ -77,12 +77,3 @@ func (s *IOStreams) TerminalWidth() int {
 	}
 	return DefaultWidth
 }
-
-type fdReader struct {
-	io.ReadCloser
-	fd uintptr
-}
-
-func (r *fdReader) Fd() uintptr {
-	return r.fd
-}

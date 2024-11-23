@@ -104,16 +104,11 @@ func (t Term) IsTrueColorSupported() bool {
 // Size returns the width and height of the terminal that the current process
 // is attached to. In case of errors, the numeric values returned are -1.
 func (t Term) Size() (int, int, error) {
-	f, ok := t.out.(fileWriter)
-	if !ok {
+	if !IsTerminal(t.out.Fd()) {
 		return 0, 0, fmt.Errorf("not connected to a terminal")
 	}
 
-	if !IsTerminal(f.Fd()) {
-		return 0, 0, fmt.Errorf("not connected to a terminal")
-	}
-
-	width, height, err := GetSize(f.Fd())
+	width, height, err := GetSize(t.out.Fd())
 	if err != nil {
 		return 0, 0, err
 	}

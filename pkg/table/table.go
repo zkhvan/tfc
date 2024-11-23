@@ -92,7 +92,7 @@ func (t *table) renderHeader() {
 func (t *table) renderRow(row []string) {
 	for col, value := range row {
 		if col > 0 && len(t.delimiter) > 0 {
-			fmt.Fprintf(t.w, t.delimiter)
+			fmt.Fprint(t.w, t.delimiter)
 		}
 
 		t.renderField(col, value)
@@ -105,12 +105,12 @@ func (t *table) renderField(col int, value string) {
 
 	switch {
 	case text.DisplayWidth(value) > colDef.width:
-		fmt.Fprintf(t.w, text.Truncate(colDef.width, value))
+		fmt.Fprint(t.w, text.Truncate(colDef.width, value))
 	case text.DisplayWidth(value) <= colDef.width:
 		if col == len(t.colDefs)-1 {
-			fmt.Fprintf(t.w, value)
+			fmt.Fprint(t.w, value)
 		} else {
-			fmt.Fprintf(t.w, text.PadRight(colDef.width, value))
+			fmt.Fprint(t.w, text.PadRight(colDef.width, value))
 		}
 	}
 }
