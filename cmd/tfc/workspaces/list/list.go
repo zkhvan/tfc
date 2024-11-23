@@ -184,11 +184,10 @@ func (opts *Options) Run(ctx context.Context) error {
 		}
 	}
 
-	p := cmdutil.FieldPrinter(opts.IO, opts.Columns...)
-
 	var errs []error
-	limit := opts.Limit
 	for _, org := range orgs {
+		p := cmdutil.FieldPrinter(opts.IO, opts.Columns...)
+
 		listOpts := &ListOptions{
 			Name:        opts.Name,
 			Tags:        opts.Tags,
@@ -196,20 +195,18 @@ func (opts *Options) Run(ctx context.Context) error {
 			VCSRepos:    opts.VCSRepos,
 			RunStatus:   opts.runStatus(),
 			IncludeRuns: slices.Contains(opts.Columns, ColumnRunStatus),
-			Limit:       limit,
+			Limit:       opts.Limit,
 		}
 
-		workspaces, totalCount, err := listWorkspaces(ctx, client, org.Name, listOpts)
+		workspaces, reachedLimit, err := listWorkspaces(ctx, client, org.Name, listOpts)
 		if err != nil {
 			errs = append(errs, fmt.Errorf("error listing workspaces for %q: %w", org.Name, err))
 			continue
 		}
 
-		if len(workspaces) < totalCount {
-			fmt.Fprintf(opts.IO.Out, "Showing %d of %d results for org %q\n", opts.Limit, totalCount, org.Name)
+		if reachedLimit {
+			fmt.Fprintf(opts.IO.Out, "Showing top %d results for org %q\n", opts.Limit, org.Name)
 		}
-
-		limit -= len(workspaces)
 
 		for _, ws := range workspaces {
 			var wsVars []*tfe.Variable
@@ -226,9 +223,9 @@ func (opts *Options) Run(ctx context.Context) error {
 			fields := opts.extractWorkspaceFields(ws, wsVars)
 			p.Write(fields)
 		}
-	}
 
-	p.Flush()
+		p.Flush()
+	}
 
 	if len(errs) > 0 {
 		return errors.Join(errs...)
@@ -384,7 +381,7 @@ type ListOptions struct {
 	Limit int
 }
 
-func listWorkspaces(ctx context.Context, client *tfe.Client, org string, opts *ListOptions) ([]*tfe.Workspace, int, error) {
+func listWorkspaces(ctx context.Context, client *tfe.Client, org string, opts *ListOptions) ([]*tfe.Workspace, bool, error) {
 	f := func(lo tfe.ListOptions) ([]*tfe.Workspace, *tfe.Pagination, error) {
 		wsListOpts := &tfe.WorkspaceListOptions{
 			ListOptions:      lo,
@@ -408,10 +405,14 @@ func listWorkspaces(ctx context.Context, client *tfe.Client, org string, opts *L
 
 	pager := tfepaging.New(f).SetPageSize(MAX_PAGE_SIZE)
 
+	reachedLimit := false
 	count := 0
 	workspaces := make([]*tfe.Workspace, 0)
-	for _, ws := range pager.All() {
-		if count >= opts.Limit {
+	for i, ws := range pager.All() {
+		if opts.Limit <= count {
+			if i < pager.Current().TotalCount {
+				reachedLimit = true
+			}
 			break
 		}
 
@@ -430,10 +431,10 @@ func listWorkspaces(ctx context.Context, client *tfe.Client, org string, opts *L
 	}
 
 	if err := pager.Err(); err != nil {
-		return nil, 0, err
+		return nil, false, err
 	}
 
-	return workspaces, count, nil
+	return workspaces, reachedLimit, nil
 }
 
 func listWorkspacesVariables(ctx context.Context, client *tfe.Client, id string) (*tfe.VariableList, error) {
