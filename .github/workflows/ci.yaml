@@ -1,0 +1,37 @@
+name: CI
+
+on:
+  pull_request:
+  merge_group:
+  push:
+    branches:
+    - main
+    - release-*
+
+permissions:
+  contents: read
+
+jobs:
+  run-tests:
+    runs-on: ubuntu-latest
+
+    steps:
+      - id: checkout
+        name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - id: setup-go
+        name: Setup Go
+        uses: actions/setup-go@41dfa10bad2bb2ae585af6ee5bb4d7d973ad74ed # v5.1.0
+        with:
+          go-version-file: go.mod
+
+      - id: run-test
+        name: Run tests
+        run: make test
+
+      - id: upload-codecov-report
+        name: Upload codecov coverage reports
+        uses: codecov/codecov-action@5c47607acb93fed5485fdbf7232e8a31425f672a # v5.0.2
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
