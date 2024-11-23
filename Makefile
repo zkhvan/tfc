@@ -1,5 +1,9 @@
+include $(CURDIR)/hack/tools.mk
+
 MAIN_PACKAGE_PATH := ./cmd/tfc
 BINARY_NAME       := ./bin/tfc
+
+GO_LINT_ERROR_FORMAT ?= colored-line-number
 
 # ============================================================================
 # HELPERS
@@ -21,15 +25,15 @@ tidy:
 	go fmt ./...
 	go mod tidy -v
 
-## lint: lint the code
-.PHONY: lint
-lint:
-	golangci-lint run
+## lint-go: lint the code
+.PHONY: lint-go
+lint-go: install-golangci-lint
+	$(GOLANGCI_LINT) run --out-format=$(GO_LINT_ERROR_FORMAT)
 
-## lint/fix: lint the code, auto-fix if possible
-.PHONY: lint/fix
-lint/fix:
-	golangci-lint run --fix
+## lint-go-fix: lint the code, auto-fix if possible
+.PHONY: lint-go-fix
+lint-go-fix:
+	$(GOLANGCI_LINT) run --fix
 
 # ============================================================================
 # DEVELOPMENT
