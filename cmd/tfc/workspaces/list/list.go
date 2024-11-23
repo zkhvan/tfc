@@ -133,9 +133,9 @@ func NewCmdList(f *cmdutil.Factory) *cobra.Command {
 
 	cmd.Flags().IntVarP(&opts.Limit, "limit", "l", 20, "Limit the number of results.")
 	cmd.Flags().StringSliceVarP(&opts.WithVariables, "with-variables", "v", []string{}, "Retrieve workspace variables to display as columns (expensive).")
-	cmdutil.FlagStringEnumSliceP(cmd, &opts.Columns, "columns", "c", DefaultColumns, "Columns to show.", ColumnAll)
+	_ = cmdutil.FlagStringEnumSliceP(cmd, &opts.Columns, "columns", "c", DefaultColumns, "Columns to show.", ColumnAll)
 
-	cmdutil.MarkAllFlagsWithNoFileCompletions(cmd)
+	_ = cmdutil.MarkAllFlagsWithNoFileCompletions(cmd)
 
 	return cmd
 }
@@ -356,18 +356,6 @@ var runStatusMap = map[string][]tfe.RunStatus{
 		tfe.RunApplied,
 		tfe.RunPlannedAndFinished,
 	},
-}
-
-func filterOrganizations(orgs *tfe.OrganizationList, name string) *tfe.OrganizationList {
-	result := tfe.OrganizationList{
-		Pagination: orgs.Pagination,
-	}
-	for _, org := range orgs.Items {
-		if org.Name == name {
-			result.Items = append(result.Items, org)
-		}
-	}
-	return &result
 }
 
 type ListOptions struct {

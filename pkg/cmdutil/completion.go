@@ -28,14 +28,14 @@ func MarkFlagsWithNoFileCompletions(cmd *cobra.Command, flags ...string) error {
 	return errors.Join(errs...)
 }
 
-func FlagStringEnumSliceP(cmd *cobra.Command, p *[]string, name, shorthand string, defaultValue []string, usage string, options []string) {
+func FlagStringEnumSliceP(cmd *cobra.Command, p *[]string, name, shorthand string, defaultValue []string, usage string, options []string) error {
 	cmd.Flags().StringSliceVarP(p, name, shorthand, defaultValue, usage)
-	cmd.RegisterFlagCompletionFunc(name, GenerateOptionCompletionFunc(options))
+	return cmd.RegisterFlagCompletionFunc(name, GenerateOptionCompletionFunc(options))
 }
 
-func FlagStringEnumSlice(cmd *cobra.Command, p *[]string, name string, defaultValue []string, usage string, options []string) {
+func FlagStringEnumSlice(cmd *cobra.Command, p *[]string, name string, defaultValue []string, usage string, options []string) error {
 	cmd.Flags().StringSliceVar(p, name, defaultValue, usage)
-	cmd.RegisterFlagCompletionFunc(name, GenerateOptionCompletionFunc(options))
+	return cmd.RegisterFlagCompletionFunc(name, GenerateOptionCompletionFunc(options))
 }
 
 func GenerateOptionCompletionFunc(opts []string) func(*cobra.Command, []string, string) ([]string, cobra.ShellCompDirective) {

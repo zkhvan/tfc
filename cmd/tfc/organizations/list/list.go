@@ -62,11 +62,10 @@ func NewCmdList(f *cmdutil.Factory) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringSliceVarP(&opts.Columns, "columns", "c", ColumnDefault, "Columns to show.")
-	cmd.RegisterFlagCompletionFunc("columns", cmdutil.GenerateOptionCompletionFunc(ColumnAll))
-
 	cmd.Flags().IntVarP(&opts.Limit, "limit", "l", 20, "Limit the number of results.")
-	cmd.RegisterFlagCompletionFunc("limit", cobra.NoFileCompletions)
+	_ = cmdutil.FlagStringEnumSliceP(cmd, &opts.Columns, "columns", "c", ColumnDefault, "Columns to show.", ColumnAll)
+
+	_ = cmdutil.MarkAllFlagsWithNoFileCompletions(cmd)
 
 	return cmd
 }
