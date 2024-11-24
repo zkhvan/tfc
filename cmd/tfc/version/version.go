@@ -22,7 +22,7 @@ func NewCmdVersion(f *cmdutil.Factory, _, _ string) *cobra.Command {
 	return cmd
 }
 
-func Format(version, buildDate string) string {
+func Format(executableName, version, buildDate string) string {
 	version = strings.TrimPrefix(version, "v")
 
 	var dateStr string
@@ -30,7 +30,7 @@ func Format(version, buildDate string) string {
 		dateStr = fmt.Sprintf(" (%s)", buildDate)
 	}
 
-	return fmt.Sprintf("z version %s%s\n%s\n", version, dateStr, changelogURL(version))
+	return fmt.Sprintf("%s version %s%s\n%s\n", executableName, version, dateStr, changelogURL(version))
 }
 
 func changelogURL(version string) string {

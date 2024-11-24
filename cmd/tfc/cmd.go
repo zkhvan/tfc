@@ -15,7 +15,7 @@ func NewCmdRoot(f *cmdutil.Factory, version, date string) *cobra.Command {
 		Use:   "tfc",
 		Short: "Terraform Cloud/Enterprise CLI",
 		Annotations: map[string]string{
-			"versionInfo": versionCmd.Format(version, date),
+			"versionInfo": versionCmd.Format(f.ExecutableName, version, date),
 		},
 		Long: text.Heredoc(`
 			Terraform Cloud/Enterprise CLI.
