@@ -5,7 +5,7 @@ go 1.23.0
 require (
 	github.com/MakeNowJust/heredoc v1.0.0
 	github.com/charmbracelet/colorprofile v0.1.9
-	github.com/charmbracelet/lipgloss v0.13.0
+	github.com/charmbracelet/lipgloss v1.0.0
 	github.com/charmbracelet/x/term v0.2.1
 	github.com/hashicorp/go-tfe v1.70.0
 	github.com/muesli/reflow v0.3.0
