@@ -130,10 +130,11 @@ linters-settings:
         # Ignore following functions
         arguments:
           - fmt.Print
-          - fmt.Fprintf
-          - fmt.Fprintln
           - fmt.Printf
           - fmt.Println
+          - fmt.Fprint
+          - fmt.Fprintf
+          - fmt.Fprintln
       - name: unused-parameter
       - name: use-any
       - name: useless-break
