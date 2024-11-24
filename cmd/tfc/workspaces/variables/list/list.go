@@ -76,7 +76,7 @@ func NewCmdList(f *cmdutil.Factory) *cobra.Command {
 	return cmd
 }
 
-func (opts *Options) Complete(cmd *cobra.Command, args []string) {
+func (opts *Options) Complete(_ *cobra.Command, args []string) {
 	opts.Org, opts.Workspace = parse(args[0])
 }
 

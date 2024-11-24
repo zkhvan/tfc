@@ -70,7 +70,7 @@ func NewCmdList(f *cmdutil.Factory) *cobra.Command {
 	return cmd
 }
 
-func (opts *Options) Complete(cmd *cobra.Command, args []string) {
+func (opts *Options) Complete(_ *cobra.Command, _ []string) {
 }
 
 func (opts *Options) Run(ctx context.Context) error {
@@ -79,7 +79,7 @@ func (opts *Options) Run(ctx context.Context) error {
 		return err
 	}
 
-	orgs, err := listOrganizations(ctx, client, &ListOptions{Limit: opts.Limit})
+	orgs, err := listOrganizations(ctx, client, &listOptions{Limit: opts.Limit})
 	if err != nil {
 		return err
 	}
@@ -93,11 +93,11 @@ func (opts *Options) Run(ctx context.Context) error {
 	return nil
 }
 
-type ListOptions struct {
+type listOptions struct {
 	Limit int
 }
 
-func listOrganizations(ctx context.Context, client *tfe.Client, opts *ListOptions) ([]*tfe.Organization, error) {
+func listOrganizations(ctx context.Context, client *tfe.Client, opts *listOptions) ([]*tfe.Organization, error) {
 	f := func(o tfe.ListOptions) ([]*tfe.Organization, *tfe.Pagination, error) {
 		response, err := client.Organizations.List(ctx, &tfe.OrganizationListOptions{
 			ListOptions: o,
@@ -118,6 +118,10 @@ func listOrganizations(ctx context.Context, client *tfe.Client, opts *ListOption
 		}
 
 		orgs = append(orgs, org)
+	}
+
+	if err := pager.Err(); err != nil {
+		return nil, err
 	}
 
 	return orgs, nil

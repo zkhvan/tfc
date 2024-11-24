@@ -30,6 +30,10 @@ func Truncate(maxWidth int, s string) string {
 	if maxWidth >= minWidthForEllipsis {
 		tail = ellipsis
 	}
+
+	if maxWidth < 0 {
+		return s
+	}
 	r := truncate.StringWithTail(s, uint(maxWidth), tail)
 	if DisplayWidth(r) < maxWidth {
 		r += " "
@@ -85,7 +89,7 @@ func Heredoc(raw string) string {
 	return heredoc.Doc(raw)
 }
 
-func Heredocf(raw string, args ...interface{}) string {
+func Heredocf(raw string, args ...any) string {
 	return heredoc.Docf(raw, args...)
 }
 
@@ -93,7 +97,7 @@ func IndentHeredoc(amount int, raw string) string {
 	return Indent(amount, Heredoc(raw))
 }
 
-func IndentHeredocf(amount int, raw string, args ...interface{}) string {
+func IndentHeredocf(amount int, raw string, args ...any) string {
 	return Indent(amount, Heredocf(raw, args...))
 }
 

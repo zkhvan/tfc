@@ -38,6 +38,9 @@ jobs:
 
   run-linters:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      checks: write # Used to create checks (linting comments) on PRs
 
     steps:
       - id: checkout
