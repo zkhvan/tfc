@@ -25,14 +25,14 @@ func TestList_default(t *testing.T) {
 
 	mux.HandleFunc(
 		"GET /api/v2/organizations",
-		func(w http.ResponseWriter, r *http.Request) {
+		func(w http.ResponseWriter, _ *http.Request) {
 			fmt.Fprint(w, `{"data":[{"id":"o","type":"organizations","attributes":{"name":"o"}}]}`)
 		},
 	)
 
 	mux.HandleFunc(
 		"GET /api/v2/organizations/{organization}/workspaces",
-		func(w http.ResponseWriter, r *http.Request) {
+		func(w http.ResponseWriter, _ *http.Request) {
 			fmt.Fprint(w, `
 				{
 					"data": [
@@ -73,7 +73,7 @@ func TestList_pagination(t *testing.T) {
 
 	mux.HandleFunc(
 		"GET /api/v2/organizations",
-		func(w http.ResponseWriter, r *http.Request) {
+		func(w http.ResponseWriter, _ *http.Request) {
 			fmt.Fprint(w, `
 				{
 					"data": [
@@ -181,14 +181,14 @@ func TestList_pagination_with_client_side_filters(t *testing.T) {
 
 	mux.HandleFunc(
 		"GET /api/v2/organizations",
-		func(w http.ResponseWriter, r *http.Request) {
+		func(w http.ResponseWriter, _ *http.Request) {
 			fmt.Fprint(w, `{"data":[{"id":"o","type":"organizations","attributes":{"name":"o"}}]}`)
 		},
 	)
 
 	mux.HandleFunc(
 		"GET /api/v2/organizations/{organization}/workspaces",
-		func(w http.ResponseWriter, r *http.Request) {
+		func(w http.ResponseWriter, _ *http.Request) {
 			fmt.Fprint(w, `
 				{
 					"data": [
@@ -256,7 +256,7 @@ func TestList_multiple_organizations(t *testing.T) {
 
 		mux.HandleFunc(
 			"GET /api/v2/organizations",
-			func(w http.ResponseWriter, r *http.Request) {
+			func(w http.ResponseWriter, _ *http.Request) {
 				fmt.Fprintf(w,
 					`{"data": [%s,%s,%s]}`,
 					test_org(t, "o1"),
@@ -321,7 +321,7 @@ func TestList_multiple_organizations(t *testing.T) {
 
 		mux.HandleFunc(
 			"GET /api/v2/organizations",
-			func(w http.ResponseWriter, r *http.Request) {
+			func(w http.ResponseWriter, _ *http.Request) {
 				fmt.Fprintf(w,
 					`{"data": [%s,%s,%s]}`,
 					test_org(t, "o1"),

@@ -132,7 +132,9 @@ func NewCmdList(f *cmdutil.Factory) *cobra.Command {
 	cmd.Flags().BoolVar(&opts.Applied, "applied", false, "Search for workspaces with applied runs.")
 
 	cmd.Flags().IntVarP(&opts.Limit, "limit", "l", 20, "Limit the number of results.")
-	cmd.Flags().StringSliceVarP(&opts.WithVariables, "with-variables", "v", []string{}, "Retrieve workspace variables to display as columns (expensive).")
+	cmd.Flags().StringSliceVarP(&opts.WithVariables, "with-variables", "v", []string{},
+		"Retrieve workspace variables to display as columns (expensive).",
+	)
 	_ = cmdutil.FlagStringEnumSliceP(cmd, &opts.Columns, "columns", "c", DefaultColumns, "Columns to show.", ColumnAll)
 
 	_ = cmdutil.MarkAllFlagsWithNoFileCompletions(cmd)
@@ -140,7 +142,7 @@ func NewCmdList(f *cmdutil.Factory) *cobra.Command {
 	return cmd
 }
 
-func (opts *Options) Complete(cmd *cobra.Command, args []string) {
+func (opts *Options) Complete(cmd *cobra.Command, _ []string) {
 	// Check if there's any wildcard characters
 	if strings.ContainsAny(opts.Organization, "%*") {
 		opts.Organization = strings.ReplaceAll(opts.Organization, "*", "%")
@@ -188,7 +190,7 @@ func (opts *Options) Run(ctx context.Context) error {
 	for _, org := range orgs {
 		p := cmdutil.FieldPrinter(opts.IO, opts.Columns...)
 
-		listOpts := &ListOptions{
+		listOpts := &listOptions{
 			Name:        opts.Name,
 			Tags:        opts.Tags,
 			ExcludeTags: opts.ExcludeTags,
@@ -358,7 +360,7 @@ var runStatusMap = map[string][]tfe.RunStatus{
 	},
 }
 
-type ListOptions struct {
+type listOptions struct {
 	Name        string
 	Tags        []string
 	ExcludeTags []string
@@ -369,7 +371,12 @@ type ListOptions struct {
 	Limit int
 }
 
-func listWorkspaces(ctx context.Context, client *tfe.Client, org string, opts *ListOptions) ([]*tfe.Workspace, bool, error) {
+func listWorkspaces(
+	ctx context.Context,
+	client *tfe.Client,
+	org string,
+	opts *listOptions,
+) ([]*tfe.Workspace, bool, error) {
 	f := func(lo tfe.ListOptions) ([]*tfe.Workspace, *tfe.Pagination, error) {
 		wsListOpts := &tfe.WorkspaceListOptions{
 			ListOptions:      lo,
@@ -434,7 +441,12 @@ func listWorkspacesVariables(ctx context.Context, client *tfe.Client, id string)
 	return response, nil
 }
 
-func listOrganizations(ctx context.Context, client *tfe.Client, name string, nameExact bool) ([]*tfe.Organization, error) {
+func listOrganizations(
+	ctx context.Context,
+	client *tfe.Client,
+	name string,
+	nameExact bool,
+) ([]*tfe.Organization, error) {
 	if nameExact {
 		org, err := client.Organizations.Read(ctx, name)
 		if err != nil {

@@ -52,7 +52,7 @@ func (rw *responseWriter) WriteHeader(code int) {
 }
 
 func (rw *responseWriter) Write(b []byte) (int, error) {
-	rw.body.Write(b)
+	_, _ = rw.body.Write(b)
 	return rw.ResponseWriter.Write(b)
 }
 

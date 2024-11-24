@@ -28,18 +28,35 @@ func MarkFlagsWithNoFileCompletions(cmd *cobra.Command, flags ...string) error {
 	return errors.Join(errs...)
 }
 
-func FlagStringEnumSliceP(cmd *cobra.Command, p *[]string, name, shorthand string, defaultValue []string, usage string, options []string) error {
+func FlagStringEnumSliceP(
+	cmd *cobra.Command,
+	p *[]string,
+	name,
+	shorthand string,
+	defaultValue []string,
+	usage string,
+	options []string,
+) error {
 	cmd.Flags().StringSliceVarP(p, name, shorthand, defaultValue, usage)
 	return cmd.RegisterFlagCompletionFunc(name, GenerateOptionCompletionFunc(options))
 }
 
-func FlagStringEnumSlice(cmd *cobra.Command, p *[]string, name string, defaultValue []string, usage string, options []string) error {
+func FlagStringEnumSlice(
+	cmd *cobra.Command,
+	p *[]string,
+	name string,
+	defaultValue []string,
+	usage string,
+	options []string,
+) error {
 	cmd.Flags().StringSliceVar(p, name, defaultValue, usage)
 	return cmd.RegisterFlagCompletionFunc(name, GenerateOptionCompletionFunc(options))
 }
 
-func GenerateOptionCompletionFunc(opts []string) func(*cobra.Command, []string, string) ([]string, cobra.ShellCompDirective) {
-	return func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+func GenerateOptionCompletionFunc(opts []string) func(
+	*cobra.Command, []string, string,
+) ([]string, cobra.ShellCompDirective) {
+	return func(_ *cobra.Command, _ []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		filteredOpts := make([]string, len(opts))
 		copy(filteredOpts, opts)
 
