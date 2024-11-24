@@ -259,9 +259,9 @@ func TestList_multiple_organizations(t *testing.T) {
 			func(w http.ResponseWriter, _ *http.Request) {
 				fmt.Fprintf(w,
 					`{"data": [%s,%s,%s]}`,
-					test_org(t, "o1"),
-					test_org(t, "o2"),
-					test_org(t, "o3"),
+					testOrg(t, "o1"),
+					testOrg(t, "o2"),
+					testOrg(t, "o3"),
 				)
 			},
 		)
@@ -324,9 +324,9 @@ func TestList_multiple_organizations(t *testing.T) {
 			func(w http.ResponseWriter, _ *http.Request) {
 				fmt.Fprintf(w,
 					`{"data": [%s,%s,%s]}`,
-					test_org(t, "o1"),
-					test_org(t, "o2"),
-					test_org(t, "o3"),
+					testOrg(t, "o1"),
+					testOrg(t, "o2"),
+					testOrg(t, "o3"),
 				)
 			},
 		)
@@ -336,7 +336,7 @@ func TestList_multiple_organizations(t *testing.T) {
 			func(w http.ResponseWriter, r *http.Request) {
 				org := r.PathValue("organization")
 
-				test_workspace := func(name, org string) string {
+				testWorkspace := func(name, org string) string {
 					t.Helper()
 
 					return text.Heredocf(
@@ -365,12 +365,12 @@ func TestList_multiple_organizations(t *testing.T) {
 
 				switch org {
 				case "o1":
-					fmt.Fprintf(w, `{"data": [%s]}`, test_workspace("workspace-1", "o1"))
+					fmt.Fprintf(w, `{"data": [%s]}`, testWorkspace("workspace-1", "o1"))
 				case "o2":
 					fmt.Fprintf(w, `{"data": [%s,%s], "meta": {"pagination": %s}}`,
-						test_workspace("workspace-1", "o2"),
-						test_workspace("workspace-2", "o2"),
-						test_pagination(t, 1, 1, 2),
+						testWorkspace("workspace-1", "o2"),
+						testWorkspace("workspace-2", "o2"),
+						testPagination(t, 1, 1, 2),
 					)
 				case "o3":
 					fmt.Fprint(w, `{"data": []}`)
@@ -427,7 +427,7 @@ func runCommand(t *testing.T, client *tfe.Client, args ...string) *tfetest.CmdOu
 	}
 }
 
-func test_org(t *testing.T, name string) string {
+func testOrg(t *testing.T, name string) string {
 	t.Helper()
 
 	return text.Heredocf(
@@ -436,7 +436,7 @@ func test_org(t *testing.T, name string) string {
 	)
 }
 
-func test_pagination(t *testing.T, page, totalPages, totalCount int) string {
+func testPagination(t *testing.T, page, totalPages, totalCount int) string {
 	t.Helper()
 
 	type pagination struct {

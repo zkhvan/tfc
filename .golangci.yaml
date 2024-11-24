@@ -12,7 +12,6 @@ linters:
     - gci
     - goconst
     - gofmt
-    - goimports
     - gosec
     - gosimple
     - govet
@@ -62,10 +61,6 @@ linters-settings:
   gofmt:
     # simplify code: gofmt with `-s` option, true by default
     simplify: true
-  goimports:
-    # put imports beginning with prefix after 3rd-party packages;
-    # it's a comma-separated list of prefixes
-    local-prefixes: github.com/org/project
   govet:
     enable:
       # report about shadowed variables
@@ -122,6 +117,7 @@ linters-settings:
       - name: superfluous-else
       - name: time-equal
       - name: time-naming
+      - name: var-naming
       - name: var-declaration
       - name: unexported-naming
       # Handle error always
@@ -130,15 +126,12 @@ linters-settings:
         # Ignore following functions
         arguments:
           - fmt.Print
-          - fmt.Fprintf
-          - fmt.Fprintln
           - fmt.Printf
           - fmt.Println
+          - fmt.Fprint
+          - fmt.Fprintf
+          - fmt.Fprintln
       - name: unused-parameter
       - name: use-any
       - name: useless-break
       - name: waitgroup-by-value
-      # Explicitly disabled rules
-      - name: var-naming
-        # Disable because it conflicts with protobuf naming convention like "Id"
-        disabled: true
