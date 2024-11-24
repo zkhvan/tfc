@@ -18,7 +18,7 @@ import (
 	"github.com/zkhvan/tfc/pkg/text"
 )
 
-const MAX_PAGE_SIZE = 100
+const MaxPageSize = 100
 
 const (
 	ColumnID            string = "ID"
@@ -398,7 +398,7 @@ func listWorkspaces(
 		return result.Items, result.Pagination, nil
 	}
 
-	pager := tfepaging.New(f).SetPageSize(MAX_PAGE_SIZE)
+	pager := tfepaging.New(f).SetPageSize(MaxPageSize)
 
 	reachedLimit := false
 	count := 0
@@ -468,7 +468,7 @@ func listOrganizations(
 		return response.Items, response.Pagination, nil
 	}
 
-	pager := tfepaging.New(f).SetPageSize(MAX_PAGE_SIZE)
+	pager := tfepaging.New(f).SetPageSize(MaxPageSize)
 
 	var orgs []*tfe.Organization
 	for _, org := range pager.All() {
