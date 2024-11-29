@@ -1,16 +1,16 @@
-package runs
+package run
 
 import (
 	"github.com/spf13/cobra"
 
-	listCmd "github.com/zkhvan/tfc/cmd/tfc/runs/list"
+	listCmd "github.com/zkhvan/tfc/cmd/tfc/run/list"
 	"github.com/zkhvan/tfc/pkg/cmdutil"
 	"github.com/zkhvan/tfc/pkg/text"
 )
 
-func NewCmdRuns(f *cmdutil.Factory) *cobra.Command {
+func NewCmdRun(f *cmdutil.Factory) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "runs",
+		Use:   "run",
 		Short: "Manage Terraform runs",
 		Long: text.Heredoc(`
 			Manage Terraform runs.
