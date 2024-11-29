@@ -3,7 +3,7 @@ package main
 import (
 	"github.com/spf13/cobra"
 
-	organizationsCmd "github.com/zkhvan/tfc/cmd/tfc/organizations"
+	organizationCmd "github.com/zkhvan/tfc/cmd/tfc/organization"
 	runCmd "github.com/zkhvan/tfc/cmd/tfc/run"
 	versionCmd "github.com/zkhvan/tfc/cmd/tfc/version"
 	workspaceCmd "github.com/zkhvan/tfc/cmd/tfc/workspace"
@@ -33,7 +33,7 @@ func NewCmdRoot(f *cmdutil.Factory, version, date string) *cobra.Command {
 
 	cmd.AddCommand(versionCmd.NewCmdVersion(f, version, date))
 	cmd.AddCommand(workspaceCmd.NewCmdWorkspace(f))
-	cmd.AddCommand(organizationsCmd.NewCmdOrganizations(f))
+	cmd.AddCommand(organizationCmd.NewCmdOrganization(f))
 	cmd.AddCommand(runCmd.NewCmdRun(f))
 
 	return cmd
