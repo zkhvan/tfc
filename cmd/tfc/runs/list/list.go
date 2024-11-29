@@ -12,6 +12,7 @@ import (
 	"github.com/spf13/cobra"
 
 	xtfe "github.com/zkhvan/tfc/internal/tfe"
+	"github.com/zkhvan/tfc/internal/tfe/tfepaging"
 	"github.com/zkhvan/tfc/pkg/cmdutil"
 	"github.com/zkhvan/tfc/pkg/iolib"
 	"github.com/zkhvan/tfc/pkg/term/color"
@@ -78,6 +79,9 @@ func NewCmdList(f *cmdutil.Factory) *cobra.Command {
 	}
 
 	cmd.Flags().StringVarP(&opts.Organization, "org", "o", "", "Organization name.")
+	cmd.Flags().StringVarP(&opts.Commit, "commit", "C", "", "Commit SHA.")
+
+	cmd.Flags().IntVarP(&opts.Limit, "limit", "l", 20, "Limit the number of results.")
 	_ = cmdutil.FlagStringEnumSliceP(cmd, &opts.Columns, "columns", "c", ColumnsDefault, "Columns to show.", ColumnsAll)
 
 	_ = cmdutil.MarkFlagsWithNoFileCompletions(cmd)
@@ -90,8 +94,10 @@ type Options struct {
 	TFEClient func() (*tfe.Client, error)
 	Clock     *cmdutil.Clock
 
+	Limit        int
 	Columns      []string
 	Organization string
+	Commit       string
 }
 
 func (*Options) Complete(_ *cobra.Command, _ []string) {
@@ -103,23 +109,16 @@ func (opts *Options) Run(ctx context.Context) error {
 		return err
 	}
 
-	u := fmt.Sprintf("organizations/%s/runs", url.PathEscape(opts.Organization))
-	req, err := client.NewRequest("GET", u, &OrganizationRunListOptions{
-		Include: []tfe.RunIncludeOpt{
-			tfe.RunWorkspace,
-		},
+	runs, err := listRuns(ctx, client, opts.Organization, &listOptions{
+		Limit:  opts.Limit,
+		Commit: opts.Commit,
 	})
 	if err != nil {
 		return err
 	}
 
-	var rl tfe.RunList
-	if err := req.Do(ctx, &rl); err != nil {
-		return err
-	}
-
 	p := cmdutil.FieldPrinter(opts.IO, opts.Columns...)
-	for _, run := range rl.Items {
+	for _, run := range runs {
 		fields := opts.ExtractFields(run)
 
 		p.Write(fields)
@@ -212,3 +211,54 @@ const (
 	RunGroupFinal       RunStatusGroup = "final"
 	RunGroupDiscardable RunStatusGroup = "discardable"
 )
+
+type listOptions struct {
+	Limit  int
+	Commit string
+}
+
+func listRuns(
+	ctx context.Context,
+	client *tfe.Client,
+	org string,
+	opts *listOptions,
+) ([]*tfe.Run, error) {
+	f := func(lo tfe.ListOptions) ([]*tfe.Run, *tfe.Pagination, error) {
+		o := &OrganizationRunListOptions{
+			ListOptions: lo,
+			Commit:      opts.Commit,
+			Include: []tfe.RunIncludeOpt{
+				tfe.RunWorkspace,
+			},
+		}
+
+		u := fmt.Sprintf("organizations/%s/runs", url.PathEscape(org))
+		req, err := client.NewRequest("GET", u, o)
+		if err != nil {
+			return nil, nil, err
+		}
+
+		var rl tfe.RunList
+		if err := req.Do(ctx, &rl); err != nil {
+			return nil, nil, err
+		}
+
+		return rl.Items, rl.Pagination, nil
+	}
+
+	pager := tfepaging.New(f)
+
+	var runs []*tfe.Run
+	for i, org := range pager.All() {
+		if opts.Limit <= i {
+			break
+		}
+
+		runs = append(runs, org)
+	}
+	if err := pager.Err(); err != nil {
+		return nil, err
+	}
+
+	return runs, nil
+}
