@@ -10,7 +10,7 @@ import (
 
 	"github.com/hashicorp/go-tfe"
 
-	"github.com/zkhvan/tfc/cmd/tfc/workspaces/list"
+	"github.com/zkhvan/tfc/cmd/tfc/workspace/list"
 	"github.com/zkhvan/tfc/internal/test"
 	"github.com/zkhvan/tfc/internal/tfe/tfetest"
 	"github.com/zkhvan/tfc/pkg/clock"

@@ -6,7 +6,7 @@ import (
 	organizationsCmd "github.com/zkhvan/tfc/cmd/tfc/organizations"
 	runCmd "github.com/zkhvan/tfc/cmd/tfc/run"
 	versionCmd "github.com/zkhvan/tfc/cmd/tfc/version"
-	workspacesCmd "github.com/zkhvan/tfc/cmd/tfc/workspaces"
+	workspaceCmd "github.com/zkhvan/tfc/cmd/tfc/workspace"
 	"github.com/zkhvan/tfc/pkg/cmdutil"
 	"github.com/zkhvan/tfc/pkg/text"
 )
@@ -32,7 +32,7 @@ func NewCmdRoot(f *cmdutil.Factory, version, date string) *cobra.Command {
 	cmd.PersistentFlags().Bool("help", false, "Show help for command")
 
 	cmd.AddCommand(versionCmd.NewCmdVersion(f, version, date))
-	cmd.AddCommand(workspacesCmd.NewCmdWorkspaces(f))
+	cmd.AddCommand(workspaceCmd.NewCmdWorkspace(f))
 	cmd.AddCommand(organizationsCmd.NewCmdOrganizations(f))
 	cmd.AddCommand(runCmd.NewCmdRun(f))
 
