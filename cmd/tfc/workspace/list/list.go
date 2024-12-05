@@ -12,7 +12,8 @@ import (
 	"github.com/hashicorp/go-tfe"
 	"github.com/spf13/cobra"
 
-	"github.com/zkhvan/tfc/internal/tfe/tfepaging"
+	"github.com/zkhvan/tfc/internal/tfc"
+	"github.com/zkhvan/tfc/internal/tfc/tfepaging"
 	"github.com/zkhvan/tfc/pkg/cmdutil"
 	"github.com/zkhvan/tfc/pkg/iolib"
 	"github.com/zkhvan/tfc/pkg/text"
@@ -57,7 +58,7 @@ var (
 
 type Options struct {
 	IO        *iolib.IOStreams
-	TFEClient func() (*tfe.Client, error)
+	TFEClient func() (*tfc.Client, error)
 	Clock     *cmdutil.Clock
 	Printer   cmdutil.Printer
 
@@ -373,7 +374,7 @@ type listOptions struct {
 
 func listWorkspaces(
 	ctx context.Context,
-	client *tfe.Client,
+	client *tfc.Client,
 	org string,
 	opts *listOptions,
 ) ([]*tfe.Workspace, bool, error) {
@@ -432,7 +433,7 @@ func listWorkspaces(
 	return workspaces, reachedLimit, nil
 }
 
-func listWorkspacesVariables(ctx context.Context, client *tfe.Client, id string) (*tfe.VariableList, error) {
+func listWorkspacesVariables(ctx context.Context, client *tfc.Client, id string) (*tfe.VariableList, error) {
 	response, err := client.Variables.List(ctx, id, &tfe.VariableListOptions{})
 	if err != nil {
 		return nil, err
@@ -443,7 +444,7 @@ func listWorkspacesVariables(ctx context.Context, client *tfe.Client, id string)
 
 func listOrganizations(
 	ctx context.Context,
-	client *tfe.Client,
+	client *tfc.Client,
 	name string,
 	nameExact bool,
 ) ([]*tfe.Organization, error) {

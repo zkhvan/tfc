@@ -7,6 +7,7 @@ import (
 	"github.com/hashicorp/go-tfe"
 	"github.com/sethvargo/go-envconfig"
 
+	"github.com/zkhvan/tfc/internal/tfc"
 	"github.com/zkhvan/tfc/pkg/cmdutil"
 	"github.com/zkhvan/tfc/pkg/iolib"
 )
@@ -34,8 +35,8 @@ func ioStreams(_ *cmdutil.Factory) *iolib.IOStreams {
 	return iolib.System()
 }
 
-func tfeClientFunc(_ *cmdutil.Factory) func() (*tfe.Client, error) {
-	return func() (*tfe.Client, error) {
+func tfeClientFunc(_ *cmdutil.Factory) func() (*tfc.Client, error) {
+	return func() (*tfc.Client, error) {
 		var cfg Config
 		if err := envconfig.Process(context.Background(), &cfg); err != nil {
 			return nil, err
@@ -50,6 +51,6 @@ func tfeClientFunc(_ *cmdutil.Factory) func() (*tfe.Client, error) {
 			return nil, fmt.Errorf("error creating tfe client: %w", err)
 		}
 
-		return client, nil
+		return tfc.NewClient(client), nil
 	}
 }

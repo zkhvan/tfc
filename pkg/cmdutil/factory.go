@@ -1,8 +1,7 @@
 package cmdutil
 
 import (
-	"github.com/hashicorp/go-tfe"
-
+	"github.com/zkhvan/tfc/internal/tfc"
 	"github.com/zkhvan/tfc/pkg/iolib"
 )
 
@@ -13,5 +12,5 @@ type Factory struct {
 	IOStreams *iolib.IOStreams
 	Clock     *Clock
 
-	TFEClient func() (*tfe.Client, error)
+	TFEClient func() (*tfc.Client, error)
 }

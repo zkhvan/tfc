@@ -1,4 +1,4 @@
-package xtfe
+package tfc
 
 import (
 	"github.com/charmbracelet/lipgloss"

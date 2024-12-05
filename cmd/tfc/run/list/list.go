@@ -11,8 +11,8 @@ import (
 	"github.com/hashicorp/go-tfe"
 	"github.com/spf13/cobra"
 
-	xtfe "github.com/zkhvan/tfc/internal/tfe"
-	"github.com/zkhvan/tfc/internal/tfe/tfepaging"
+	"github.com/zkhvan/tfc/internal/tfc"
+	"github.com/zkhvan/tfc/internal/tfc/tfepaging"
 	"github.com/zkhvan/tfc/pkg/cmdutil"
 	"github.com/zkhvan/tfc/pkg/iolib"
 	"github.com/zkhvan/tfc/pkg/term/color"
@@ -91,7 +91,7 @@ func NewCmdList(f *cmdutil.Factory) *cobra.Command {
 
 type Options struct {
 	IO        *iolib.IOStreams
-	TFEClient func() (*tfe.Client, error)
+	TFEClient func() (*tfc.Client, error)
 	Clock     *cmdutil.Clock
 
 	Limit        int
@@ -136,7 +136,7 @@ func (opts *Options) ExtractFields(run *tfe.Run) map[string]string {
 	}
 
 	renderStatus := func(status tfe.RunStatus) string {
-		s := lipgloss.NewStyle().Foreground(xtfe.RunStatusColor(status))
+		s := lipgloss.NewStyle().Foreground(tfc.RunStatusColor(status))
 
 		return s.Render(string(status))
 	}
@@ -219,7 +219,7 @@ type listOptions struct {
 
 func listRuns(
 	ctx context.Context,
-	client *tfe.Client,
+	client *tfc.Client,
 	org string,
 	opts *listOptions,
 ) ([]*tfe.Run, error) {

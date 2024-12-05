@@ -7,7 +7,8 @@ import (
 	"github.com/hashicorp/go-tfe"
 	"github.com/spf13/cobra"
 
-	"github.com/zkhvan/tfc/internal/tfe/tfepaging"
+	"github.com/zkhvan/tfc/internal/tfc"
+	"github.com/zkhvan/tfc/internal/tfc/tfepaging"
 	"github.com/zkhvan/tfc/pkg/cmdutil"
 	"github.com/zkhvan/tfc/pkg/iolib"
 	"github.com/zkhvan/tfc/pkg/text"
@@ -34,7 +35,7 @@ var (
 
 type Options struct {
 	IO        *iolib.IOStreams
-	TFEClient func() (*tfe.Client, error)
+	TFEClient func() (*tfc.Client, error)
 	Clock     *cmdutil.Clock
 
 	Columns []string
@@ -97,7 +98,7 @@ type listOptions struct {
 	Limit int
 }
 
-func listOrganizations(ctx context.Context, client *tfe.Client, opts *listOptions) ([]*tfe.Organization, error) {
+func listOrganizations(ctx context.Context, client *tfc.Client, opts *listOptions) ([]*tfe.Organization, error) {
 	f := func(o tfe.ListOptions) ([]*tfe.Organization, *tfe.Pagination, error) {
 		response, err := client.Organizations.List(ctx, &tfe.OrganizationListOptions{
 			ListOptions: o,
