@@ -13,7 +13,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/zkhvan/tfc/internal/tfc"
-	"github.com/zkhvan/tfc/internal/tfc/tfepaging"
 	"github.com/zkhvan/tfc/pkg/cmdutil"
 	"github.com/zkhvan/tfc/pkg/iolib"
 	"github.com/zkhvan/tfc/pkg/text"
@@ -390,23 +389,11 @@ func listOrganizations(
 		return []*tfe.Organization{org}, nil
 	}
 
-	f := func(opts tfe.ListOptions) ([]*tfe.Organization, *tfe.Pagination, error) {
-		response, err := client.Organizations.List(ctx, &tfe.OrganizationListOptions{
-			ListOptions: opts,
-			Query:       name,
-		})
-		if err != nil {
-			return nil, nil, fmt.Errorf("list organizations: %w", err)
-		}
-
-		return response.Items, response.Pagination, nil
-	}
-
-	pager := tfepaging.New(f).SetPageSize(MaxPageSize)
-
-	var orgs []*tfe.Organization
-	for _, org := range pager.All() {
-		orgs = append(orgs, org)
+	orgs, _, err := client.Organizations.List(ctx, &tfc.OrganizationListOptions{
+		Query: name,
+	})
+	if err != nil {
+		return nil, err
 	}
 
 	return orgs, nil

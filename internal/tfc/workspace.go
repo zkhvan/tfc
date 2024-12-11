@@ -95,7 +95,7 @@ func (s *WorkspacesService) List(
 	current := Pagination{}
 	pager := tfepaging.New(f)
 
-	workspaces := make([]*Workspace, 0)
+	var workspaces []*Workspace
 	for i, ws := range pager.All() {
 		current.Pagination = *pager.Current()
 

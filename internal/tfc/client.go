@@ -10,7 +10,8 @@ type Client struct {
 	// Re-use a common struct for each service.
 	common service
 
-	Workspaces *WorkspacesService
+	Organizations *OrganizationsService
+	Workspaces    *WorkspacesService
 }
 
 func NewClient(tfeClient *tfe.Client) *Client {
@@ -20,6 +21,7 @@ func NewClient(tfeClient *tfe.Client) *Client {
 	c.common.tfc = c
 	c.common.tfe = tfeClient
 
+	c.Organizations = (*OrganizationsService)(&c.common)
 	c.Workspaces = (*WorkspacesService)(&c.common)
 
 	return c

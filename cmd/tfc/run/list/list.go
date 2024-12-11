@@ -3,7 +3,6 @@ package list
 import (
 	"context"
 	"fmt"
-	"net/url"
 	"strconv"
 	"time"
 
@@ -12,7 +11,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/zkhvan/tfc/internal/tfc"
-	"github.com/zkhvan/tfc/internal/tfc/tfepaging"
 	"github.com/zkhvan/tfc/pkg/cmdutil"
 	"github.com/zkhvan/tfc/pkg/iolib"
 	"github.com/zkhvan/tfc/pkg/term/color"
@@ -109,12 +107,19 @@ func (opts *Options) Run(ctx context.Context) error {
 		return err
 	}
 
-	runs, err := listRuns(ctx, client, opts.Organization, &listOptions{
-		Limit:  opts.Limit,
+	o := tfc.OrganizationRunListOptions{
+		ListOptions: tfc.ListOptions{
+			Limit: opts.Limit,
+		},
 		Commit: opts.Commit,
-	})
+	}
+	runs, paging, err := client.Organizations.ListRuns(ctx, opts.Organization, &o)
 	if err != nil {
 		return err
+	}
+
+	if paging.ReachedLimit {
+		fmt.Fprintf(opts.IO.Out, "Showing top %d results\n\n", opts.Limit)
 	}
 
 	p := cmdutil.FieldPrinter(opts.IO, opts.Columns...)
@@ -154,111 +159,4 @@ func (opts *Options) ExtractFields(run *tfe.Run) map[string]string {
 	}
 
 	return fields
-}
-
-type OrganizationRunListOptions struct {
-	tfe.ListOptions
-
-	// Optional: Searches runs that matches the supplied VCS username.
-	User string `url:"search[user],omitempty"`
-
-	// Optional: Searches runs that matches the supplied commit sha.
-	Commit string `url:"search[commit],omitempty"`
-
-	// Optional: Searches runs that matches the supplied VCS username, commit sha, run_id, and run message.
-	// The presence of search[commit] or search[user] takes priority over this parameter and will be omitted.
-	Search string `url:"search[basic],omitempty"`
-
-	// Optional: Comma-separated list of acceptable run statuses.
-	// Options are listed at https://developer.hashicorp.com/terraform/cloud-docs/api-docs/run#run-states,
-	// or as constants with the RunStatus string type.
-	Status string `url:"filter[status],omitempty"`
-
-	// Optional: A single status group. The result lists runs whose status
-	// falls under this status group. For details on options, refer to Run
-	// status groups.
-	// Options are listed at https://developer.hashicorp.com/terraform/enterprise/api-docs/run#run-status-groups,
-	// or as constants with the RunStatusGroup string type.
-	StatusGroup string `url:"filter[status_group],omitempty"`
-
-	// Optional: Comma-separated list of acceptable run sources.
-	// Options are listed at https://developer.hashicorp.com/terraform/cloud-docs/api-docs/run#run-sources,
-	// or as constants with the RunSource string type.
-	Source string `url:"filter[source],omitempty"`
-
-	// Optional: Comma-separated list of acceptable run operation types.
-	// Options are listed at https://developer.hashicorp.com/terraform/cloud-docs/api-docs/run#run-operations,
-	// or as constants with the RunOperation string type.
-	Operation string `url:"filter[operation],omitempty"`
-
-	// Optional: Comma-separated list of acceptable agent pool names. The
-	// result lists runs that use one of the agent pools you specify.
-	AgentPoolNames string `url:"filter[agent_pool_names],omitempty"`
-
-	// Optional: A comma-separated list of workspace names. The result lists
-	// runs that belong to one of the workspaces your specify.
-	WorkspaceNames string `url:"filter[workspace_names],omitempty"`
-
-	// Optional: A list of relations to include. See available resources:
-	// https://developer.hashicorp.com/terraform/cloud-docs/api-docs/run#available-related-resources
-	Include []tfe.RunIncludeOpt `url:"include,omitempty"`
-}
-
-type RunStatusGroup string
-
-const (
-	RunGroupNonFinal    RunStatusGroup = "non_final"
-	RunGroupFinal       RunStatusGroup = "final"
-	RunGroupDiscardable RunStatusGroup = "discardable"
-)
-
-type listOptions struct {
-	Limit  int
-	Commit string
-}
-
-func listRuns(
-	ctx context.Context,
-	client *tfc.Client,
-	org string,
-	opts *listOptions,
-) ([]*tfe.Run, error) {
-	f := func(lo tfe.ListOptions) ([]*tfe.Run, *tfe.Pagination, error) {
-		o := &OrganizationRunListOptions{
-			ListOptions: lo,
-			Commit:      opts.Commit,
-			Include: []tfe.RunIncludeOpt{
-				tfe.RunWorkspace,
-			},
-		}
-
-		u := fmt.Sprintf("organizations/%s/runs", url.PathEscape(org))
-		req, err := client.NewRequest("GET", u, o)
-		if err != nil {
-			return nil, nil, err
-		}
-
-		var rl tfe.RunList
-		if err := req.Do(ctx, &rl); err != nil {
-			return nil, nil, err
-		}
-
-		return rl.Items, rl.Pagination, nil
-	}
-
-	pager := tfepaging.New(f)
-
-	var runs []*tfe.Run
-	for i, org := range pager.All() {
-		if opts.Limit <= i {
-			break
-		}
-
-		runs = append(runs, org)
-	}
-	if err := pager.Err(); err != nil {
-		return nil, err
-	}
-
-	return runs, nil
 }

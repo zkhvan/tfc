@@ -54,3 +54,11 @@ func RunStatusColor(status tfe.RunStatus) lipgloss.Color {
 
 	return color.Black
 }
+
+type RunStatusGroup string
+
+const (
+	RunGroupNonFinal    RunStatusGroup = "non_final"
+	RunGroupFinal       RunStatusGroup = "final"
+	RunGroupDiscardable RunStatusGroup = "discardable"
+)

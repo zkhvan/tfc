@@ -8,7 +8,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/zkhvan/tfc/internal/tfc"
-	"github.com/zkhvan/tfc/internal/tfc/tfepaging"
 	"github.com/zkhvan/tfc/pkg/cmdutil"
 	"github.com/zkhvan/tfc/pkg/iolib"
 	"github.com/zkhvan/tfc/pkg/text"
@@ -80,9 +79,17 @@ func (opts *Options) Run(ctx context.Context) error {
 		return err
 	}
 
-	orgs, err := listOrganizations(ctx, client, &listOptions{Limit: opts.Limit})
+	orgs, paging, err := client.Organizations.List(ctx, &tfc.OrganizationListOptions{
+		ListOptions: tfc.ListOptions{
+			Limit: opts.Limit,
+		},
+	})
 	if err != nil {
 		return err
+	}
+
+	if paging.ReachedLimit {
+		fmt.Fprintf(opts.IO.Out, "Showing top %d results\n\n", opts.Limit)
 	}
 
 	p := cmdutil.FieldPrinter(opts.IO, opts.Columns...)
@@ -92,40 +99,6 @@ func (opts *Options) Run(ctx context.Context) error {
 	p.Flush()
 
 	return nil
-}
-
-type listOptions struct {
-	Limit int
-}
-
-func listOrganizations(ctx context.Context, client *tfc.Client, opts *listOptions) ([]*tfe.Organization, error) {
-	f := func(o tfe.ListOptions) ([]*tfe.Organization, *tfe.Pagination, error) {
-		response, err := client.Organizations.List(ctx, &tfe.OrganizationListOptions{
-			ListOptions: o,
-		})
-		if err != nil {
-			return nil, nil, fmt.Errorf("list organizations: %w", err)
-		}
-
-		return response.Items, response.Pagination, nil
-	}
-
-	pager := tfepaging.New(f)
-
-	var orgs []*tfe.Organization
-	for i, org := range pager.All() {
-		if opts.Limit <= i {
-			break
-		}
-
-		orgs = append(orgs, org)
-	}
-
-	if err := pager.Err(); err != nil {
-		return nil, err
-	}
-
-	return orgs, nil
 }
 
 func (opts *Options) write(p cmdutil.Printer, org *tfe.Organization) {
