@@ -191,23 +191,28 @@ func (opts *Options) Run(ctx context.Context) error {
 	for _, org := range orgs {
 		p := cmdutil.FieldPrinter(opts.IO, opts.Columns...)
 
-		listOpts := &listOptions{
-			Name:        opts.Name,
-			Tags:        opts.Tags,
-			ExcludeTags: opts.ExcludeTags,
-			VCSRepos:    opts.VCSRepos,
-			RunStatus:   opts.runStatus(),
-			IncludeRuns: slices.Contains(opts.Columns, ColumnRunStatus),
-			Limit:       opts.Limit,
+		o := tfc.WorkspaceListOptions{
+			ListOptions: tfc.ListOptions{
+				Limit: opts.Limit,
+			},
+			Search:           opts.Name,
+			Tags:             strings.Join(opts.Tags, ","),
+			ExcludeTags:      strings.Join(opts.ExcludeTags, ","),
+			CurrentRunStatus: opts.runStatus(),
+			VCSRepos:         opts.VCSRepos,
 		}
 
-		workspaces, reachedLimit, err := listWorkspaces(ctx, client, org.Name, listOpts)
+		if slices.Contains(opts.Columns, ColumnRunStatus) {
+			o.Include = append(o.Include, tfe.WSCurrentRun)
+		}
+
+		workspaces, paging, err := client.Workspaces.List(ctx, org.Name, &o)
 		if err != nil {
 			errs = append(errs, fmt.Errorf("error listing workspaces for %q: %w", org.Name, err))
 			continue
 		}
 
-		if reachedLimit {
+		if paging.ReachedLimit {
 			fmt.Fprintf(opts.IO.Out, "Showing top %d results for org %q\n", opts.Limit, org.Name)
 		}
 
@@ -359,78 +364,6 @@ var runStatusMap = map[string][]tfe.RunStatus{
 		tfe.RunApplied,
 		tfe.RunPlannedAndFinished,
 	},
-}
-
-type listOptions struct {
-	Name        string
-	Tags        []string
-	ExcludeTags []string
-	VCSRepos    []string
-	RunStatus   string
-	IncludeRuns bool
-
-	Limit int
-}
-
-func listWorkspaces(
-	ctx context.Context,
-	client *tfc.Client,
-	org string,
-	opts *listOptions,
-) ([]*tfe.Workspace, bool, error) {
-	f := func(lo tfe.ListOptions) ([]*tfe.Workspace, *tfe.Pagination, error) {
-		wsListOpts := &tfe.WorkspaceListOptions{
-			ListOptions:      lo,
-			Search:           opts.Name,
-			Tags:             strings.Join(opts.Tags, ","),
-			ExcludeTags:      strings.Join(opts.ExcludeTags, ","),
-			CurrentRunStatus: opts.RunStatus,
-		}
-
-		if opts.IncludeRuns {
-			wsListOpts.Include = append(wsListOpts.Include, tfe.WSCurrentRun)
-		}
-
-		result, err := client.Workspaces.List(ctx, org, wsListOpts)
-		if err != nil {
-			return nil, nil, err
-		}
-
-		return result.Items, result.Pagination, nil
-	}
-
-	pager := tfepaging.New(f).SetPageSize(MaxPageSize)
-
-	reachedLimit := false
-	count := 0
-	workspaces := make([]*tfe.Workspace, 0)
-	for i, ws := range pager.All() {
-		if opts.Limit <= count {
-			if i < pager.Current().TotalCount {
-				reachedLimit = true
-			}
-			break
-		}
-
-		if len(opts.VCSRepos) > 0 {
-			if ws.VCSRepo == nil {
-				continue
-			}
-
-			if !slices.Contains(opts.VCSRepos, ws.VCSRepo.Identifier) {
-				continue
-			}
-		}
-
-		workspaces = append(workspaces, ws)
-		count++
-	}
-
-	if err := pager.Err(); err != nil {
-		return nil, false, err
-	}
-
-	return workspaces, reachedLimit, nil
 }
 
 func listWorkspacesVariables(ctx context.Context, client *tfc.Client, id string) (*tfe.VariableList, error) {
