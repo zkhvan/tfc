@@ -87,7 +87,7 @@ func (opts *Options) Run(ctx context.Context) error {
 		return err
 	}
 
-	ws, err := client.Client.Workspaces.Read(ctx, opts.Org, opts.Workspace)
+	ws, err := client.Workspaces.Read(ctx, opts.Org, opts.Workspace)
 	if err != nil {
 		return err
 	}

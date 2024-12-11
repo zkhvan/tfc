@@ -57,6 +57,14 @@ type WorkspaceListOptions struct {
 	VCSRepos []string
 }
 
+func (s *WorkspacesService) Read(
+	ctx context.Context,
+	org string,
+	workspace string,
+) (*Workspace, error) {
+	return s.tfe.Workspaces.Read(ctx, org, workspace)
+}
+
 func (s *WorkspacesService) List(
 	ctx context.Context,
 	org string,
