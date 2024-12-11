@@ -14,8 +14,16 @@ import (
 
 type Config struct {
 	Hostname string `env:"TFE_HOSTNAME,default=app.terraform.io"`
-	Address  string `env:"TFE_ADDRESS,default=https://$TFE_HOSTNAME"`
+	Address  string `env:"TFE_ADDRESS"`
 	Token    string `env:"TFE_TOKEN,required"`
+}
+
+func (c *Config) GetAddress() string {
+	if len(c.Address) > 0 {
+		return c.Address
+	}
+
+	return fmt.Sprintf("https://%s", c.Hostname)
 }
 
 func New(appVersion string) (*cmdutil.Factory, error) {
@@ -43,7 +51,7 @@ func tfeClientFunc(_ *cmdutil.Factory) func() (*tfc.Client, error) {
 		}
 
 		tfeCfg := tfe.DefaultConfig()
-		tfeCfg.Address = cfg.Address
+		tfeCfg.Address = cfg.GetAddress()
 		tfeCfg.Token = cfg.Token
 
 		client, err := tfe.NewClient(tfeCfg)
