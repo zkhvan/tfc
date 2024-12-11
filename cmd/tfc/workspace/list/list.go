@@ -187,10 +187,10 @@ func (opts *Options) Run(ctx context.Context) error {
 		}
 	}
 
+	p := cmdutil.FieldPrinter(opts.IO, opts.Columns...)
+
 	var errs []error
 	for _, org := range orgs {
-		p := cmdutil.FieldPrinter(opts.IO, opts.Columns...)
-
 		o := tfc.WorkspaceListOptions{
 			ListOptions: tfc.ListOptions{
 				Limit: opts.Limit,
@@ -213,7 +213,7 @@ func (opts *Options) Run(ctx context.Context) error {
 		}
 
 		if paging.ReachedLimit {
-			fmt.Fprintf(opts.IO.Out, "Showing top %d results for org %q\n", opts.Limit, org.Name)
+			fmt.Fprintf(opts.IO.Out, "Showing top %d results for org %q\n\n", opts.Limit, org.Name)
 		}
 
 		for _, ws := range workspaces {
@@ -231,9 +231,9 @@ func (opts *Options) Run(ctx context.Context) error {
 			fields := opts.extractWorkspaceFields(ws, wsVars)
 			p.Write(fields)
 		}
-
-		p.Flush()
 	}
+
+	p.Flush()
 
 	if len(errs) > 0 {
 		return errors.Join(errs...)
