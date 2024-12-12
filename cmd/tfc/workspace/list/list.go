@@ -7,6 +7,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/charmbracelet/lipgloss"
 	"github.com/hashicorp/go-tfe"
@@ -241,11 +242,49 @@ func (opts *Options) Run(ctx context.Context) error {
 	return nil
 }
 
+func (opts *Options) runStatus() string {
+	var statuses []tfe.RunStatus
+
+	if opts.Pending {
+		statuses = append(statuses, tfc.RunStatusesInGroup(tfc.RunStatusGroupPending)...)
+	}
+	if opts.Errored {
+		statuses = append(statuses, tfc.RunStatusesInGroup(tfc.RunStatusGroupErrored)...)
+	}
+	if opts.Running {
+		statuses = append(statuses, tfc.RunStatusesInGroup(tfc.RunStatusGroupRunning)...)
+	}
+	if opts.Holding {
+		statuses = append(statuses, tfc.RunStatusesInGroup(tfc.RunStatusGroupHolding)...)
+	}
+	if opts.Applied {
+		statuses = append(statuses, tfc.RunStatusesInGroup(tfc.RunStatusGroupApplied)...)
+	}
+
+	result := make([]string, 0, len(statuses))
+	for _, s := range statuses {
+		result = append(result, string(s))
+	}
+	return strings.Join(result, ",")
+}
+
 func (opts *Options) extractWorkspaceFields(ws *tfe.Workspace, wsVars []*tfe.Variable) map[string]string {
+	renderTime := func(at time.Time) string {
+		rat := text.RelativeTimeAgo(opts.Clock.Now(), at)
+
+		return TimeStyle.Render(rat)
+	}
+
+	renderStatus := func(status tfe.RunStatus) string {
+		s := lipgloss.NewStyle().Foreground(tfc.RunStatusColor(status))
+
+		return s.Render(string(status))
+	}
+
 	v := map[string]string{
 		ColumnID:            ws.ID,
 		ColumnName:          ws.Name,
-		ColumnUpdatedAt:     TimeStyle.Render(text.RelativeTimeAgo(opts.Clock.Now(), ws.UpdatedAt)),
+		ColumnUpdatedAt:     renderTime(ws.UpdatedAt),
 		ColumnWorkingDir:    ws.WorkingDirectory,
 		ColumnTFVersion:     ws.TerraformVersion,
 		ColumnResourceCount: strconv.Itoa(ws.ResourceCount),
@@ -261,7 +300,7 @@ func (opts *Options) extractWorkspaceFields(ws *tfe.Workspace, wsVars []*tfe.Var
 	}
 
 	if ws.CurrentRun != nil {
-		v[ColumnRunStatus] = renderRunStatus(ws.CurrentRun.Status)
+		v[ColumnRunStatus] = renderStatus(ws.CurrentRun.Status)
 	}
 
 	if len(opts.WithVariables) > 0 {
@@ -278,91 +317,6 @@ func (opts *Options) extractWorkspaceFields(ws *tfe.Workspace, wsVars []*tfe.Var
 	}
 
 	return v
-}
-
-func (opts *Options) runStatus() string {
-	var statuses []tfe.RunStatus
-
-	if opts.Pending {
-		statuses = append(statuses, runStatusMap["pending"]...)
-	}
-	if opts.Errored {
-		statuses = append(statuses, runStatusMap["errored"]...)
-	}
-	if opts.Running {
-		statuses = append(statuses, runStatusMap["running"]...)
-	}
-	if opts.Holding {
-		statuses = append(statuses, runStatusMap["holding"]...)
-	}
-	if opts.Applied {
-		statuses = append(statuses, runStatusMap["applied"]...)
-	}
-
-	result := make([]string, 0, len(statuses))
-	for _, s := range statuses {
-		result = append(result, string(s))
-	}
-	return strings.Join(result, ",")
-}
-
-func renderRunStatus(status tfe.RunStatus) string {
-	var group string
-	for currentGroup, statuses := range runStatusMap {
-		if slices.Contains(statuses, status) {
-			group = currentGroup
-		}
-	}
-	switch group {
-	case "pending":
-		return RunStatusPendingStyle.Render(string(status))
-	case "errored":
-		return RunStatusErroredStyle.Render(string(status))
-	case "running":
-		return RunStatusRunningStyle.Render(string(status))
-	case "holding":
-		return RunStatusHoldingStyle.Render(string(status))
-	case "applied":
-		return RunStatusAppliedStyle.Render(string(status))
-	default:
-		return ""
-	}
-}
-
-var runStatusMap = map[string][]tfe.RunStatus{
-	"pending": {
-		tfe.RunCostEstimated,
-		tfe.RunPlanned,
-		tfe.RunPolicyChecked,
-		tfe.RunPolicyOverride,
-		tfe.RunPostPlanCompleted,
-		tfe.RunPreApplyCompleted,
-	},
-	"errored": {
-		tfe.RunErrored,
-	},
-	"running": {
-		tfe.RunApplying,
-		tfe.RunConfirmed,
-		tfe.RunCostEstimating,
-		tfe.RunFetching,
-		tfe.RunPlanning,
-		tfe.RunPolicyChecking,
-		tfe.RunPostPlanRunning,
-		tfe.RunPreApplyRunning,
-		tfe.RunPrePlanCompleted,
-		tfe.RunPrePlanRunning,
-	},
-	"holding": {
-		tfe.RunApplyQueued,
-		tfe.RunPending,
-		tfe.RunPlanQueued,
-		tfe.RunQueuing,
-	},
-	"applied": {
-		tfe.RunApplied,
-		tfe.RunPlannedAndFinished,
-	},
 }
 
 func listWorkspacesVariables(ctx context.Context, client *tfc.Client, id string) (*tfe.VariableList, error) {

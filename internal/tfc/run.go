@@ -7,7 +7,7 @@ import (
 	"github.com/zkhvan/tfc/pkg/term/color"
 )
 
-var runStatusGroups = map[tfe.RunStatus]string{
+var runStatusGroups = map[RunStatus]RunStatusGroup{
 	tfe.RunCostEstimated:      "pending",
 	tfe.RunPlanned:            "pending",
 	tfe.RunPolicyChecked:      "pending",
@@ -33,7 +33,7 @@ var runStatusGroups = map[tfe.RunStatus]string{
 	tfe.RunPlannedAndFinished: "applied",
 }
 
-func RunStatusColor(status tfe.RunStatus) lipgloss.Color {
+func RunStatusColor(status RunStatus) lipgloss.Color {
 	group, ok := runStatusGroups[status]
 	if !ok {
 		return color.Black
@@ -56,9 +56,31 @@ func RunStatusColor(status tfe.RunStatus) lipgloss.Color {
 }
 
 type RunStatusGroup string
+type RunStatus = tfe.RunStatus
 
 const (
-	RunGroupNonFinal    RunStatusGroup = "non_final"
-	RunGroupFinal       RunStatusGroup = "final"
-	RunGroupDiscardable RunStatusGroup = "discardable"
+	RunStatusGroupUnknown RunStatusGroup = ""
+	RunStatusGroupPending RunStatusGroup = "pending"
+	RunStatusGroupErrored RunStatusGroup = "errored"
+	RunStatusGroupRunning RunStatusGroup = "running"
+	RunStatusGroupHolding RunStatusGroup = "holding"
+	RunStatusGroupApplied RunStatusGroup = "applied"
+)
+
+func RunStatusesInGroup(x RunStatusGroup) []RunStatus {
+	var statuses []RunStatus
+	for s, g := range runStatusGroups {
+		if g == x {
+			statuses = append(statuses, s)
+		}
+	}
+	return statuses
+}
+
+type RunGroup string
+
+const (
+	RunGroupNonFinal    RunGroup = "non_final"
+	RunGroupFinal       RunGroup = "final"
+	RunGroupDiscardable RunGroup = "discardable"
 )
