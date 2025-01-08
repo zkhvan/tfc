@@ -9,13 +9,14 @@ import (
 
 	"github.com/zkhvan/tfc/internal/tfc"
 	"github.com/zkhvan/tfc/pkg/cmdutil"
+	"github.com/zkhvan/tfc/pkg/credentials"
 	"github.com/zkhvan/tfc/pkg/iolib"
 )
 
 type Config struct {
 	Hostname string `env:"TFE_HOSTNAME,default=app.terraform.io"`
 	Address  string `env:"TFE_ADDRESS"`
-	Token    string `env:"TFE_TOKEN,required"`
+	Token    string `env:"TFE_TOKEN"`
 }
 
 func (c *Config) GetAddress() string {
@@ -53,6 +54,18 @@ func tfeClientFunc(_ *cmdutil.Factory) func() (*tfc.Client, error) {
 		tfeCfg := tfe.DefaultConfig()
 		tfeCfg.Address = cfg.GetAddress()
 		tfeCfg.Token = cfg.Token
+
+		if len(tfeCfg.Token) == 0 {
+			token, err := credentials.GetTokenForHost(cfg.Hostname)
+			if err != nil {
+				return nil, fmt.Errorf("error getting token from credentials file: %w", err)
+			}
+			tfeCfg.Token = token
+		}
+
+		if len(tfeCfg.Token) == 0 {
+			return nil, fmt.Errorf("no tfe token found")
+		}
 
 		client, err := tfe.NewClient(tfeCfg)
 		if err != nil {
