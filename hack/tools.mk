@@ -16,7 +16,7 @@ ARCH := $(shell uname -m)
 # TOOL VERSIONS
 # ==========================================================================
 
-GOLANGCI_LINT_VERSION ?= $(shell grep github.com/golangci/golangci-lint $(TOOLS_MOD_FILE) | awk '{print $$2}')
+GOLANGCI_LINT_VERSION ?= $(shell grep github.com/golangci/golangci-lint $(TOOLS_MOD_FILE) | awk '{print $$NF}')
 
 # ==========================================================================
 # TOOL TARGETS
