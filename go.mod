@@ -7,7 +7,7 @@ require (
 	github.com/charmbracelet/colorprofile v0.1.9
 	github.com/charmbracelet/lipgloss v1.0.0
 	github.com/charmbracelet/x/term v0.2.1
-	github.com/hashicorp/go-tfe v1.71.0
+	github.com/hashicorp/go-tfe v1.72.0
 	github.com/muesli/reflow v0.3.0
 	github.com/sethvargo/go-envconfig v1.1.0
 	github.com/spf13/cobra v1.8.1
