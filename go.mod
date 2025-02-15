@@ -9,9 +9,9 @@ require (
 	github.com/charmbracelet/x/term v0.2.1
 	github.com/hashicorp/go-tfe v1.74.1
 	github.com/muesli/reflow v0.3.0
-	github.com/sethvargo/go-envconfig v1.1.0
+	github.com/sethvargo/go-envconfig v1.1.1
 	github.com/spf13/cobra v1.8.1
-	github.com/spf13/pflag v1.0.5
+	github.com/spf13/pflag v1.0.6
 )
 
 require (
