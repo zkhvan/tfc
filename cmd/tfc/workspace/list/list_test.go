@@ -243,6 +243,7 @@ func TestList_pagination_with_client_side_filters(t *testing.T) {
 	test.BufferEmpty(t, result.ErrBuf)
 	test.Buffer(t, result.OutBuf, text.Heredoc(`
 		Showing top 1 results for org "o"
+
 		ORG  NAME         RUN_STATUS  UPDATED_AT
 		o    workspace-1              about 1 day ago
 	`))
@@ -381,12 +382,11 @@ func TestList_multiple_organizations(t *testing.T) {
 
 		test.BufferEmpty(t, result.ErrBuf)
 		test.Buffer(t, result.OutBuf, text.Heredoc(`
+			Showing top 1 results for org "o2"
+
 			ORG  NAME         RUN_STATUS  UPDATED_AT
 			o1   workspace-1              about 1 day ago
-			Showing top 1 results for org "o2"
-			ORG  NAME         RUN_STATUS  UPDATED_AT
 			o2   workspace-1              about 1 day ago
-			ORG  NAME  RUN_STATUS  UPDATED_AT
 		`))
 	})
 }
