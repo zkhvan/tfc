@@ -8,11 +8,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hashicorp/go-tfe"
-
-	"github.com/zkhvan/tfc/cmd/tfc/workspaces/list"
+	"github.com/zkhvan/tfc/cmd/tfc/workspace/list"
 	"github.com/zkhvan/tfc/internal/test"
-	"github.com/zkhvan/tfc/internal/tfe/tfetest"
+	"github.com/zkhvan/tfc/internal/tfc"
+	"github.com/zkhvan/tfc/internal/tfc/tfetest"
 	"github.com/zkhvan/tfc/pkg/clock"
 	"github.com/zkhvan/tfc/pkg/cmdutil"
 	"github.com/zkhvan/tfc/pkg/iolib"
@@ -396,14 +395,14 @@ var (
 	referenceTime = time.Date(2000, time.January, 1, 12, 0, 0, 0, time.UTC)
 )
 
-func runCommand(t *testing.T, client *tfe.Client, args ...string) *tfetest.CmdOut {
+func runCommand(t *testing.T, client *tfc.Client, args ...string) *tfetest.CmdOut {
 	t.Helper()
 
 	ios, _, stdout, stderr := iolib.Test()
 
 	f := &cmdutil.Factory{
 		IOStreams: ios,
-		TFEClient: func() (*tfe.Client, error) { return client, nil },
+		TFEClient: func() (*tfc.Client, error) { return client, nil },
 		Clock:     cmdutil.NewClock(clock.FrozenClock(referenceTime)),
 	}
 

@@ -1,15 +1,15 @@
-package workspaces
+package workspace
 
 import (
 	"github.com/spf13/cobra"
 
-	listCmd "github.com/zkhvan/tfc/cmd/tfc/workspaces/list"
-	variablesCmd "github.com/zkhvan/tfc/cmd/tfc/workspaces/variables"
+	listCmd "github.com/zkhvan/tfc/cmd/tfc/workspace/list"
+	variablesCmd "github.com/zkhvan/tfc/cmd/tfc/workspace/variables"
 	"github.com/zkhvan/tfc/pkg/cmdutil"
 	"github.com/zkhvan/tfc/pkg/text"
 )
 
-func NewCmdWorkspaces(f *cmdutil.Factory) *cobra.Command {
+func NewCmdWorkspace(f *cmdutil.Factory) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "workspaces",
 		Aliases: []string{"ws"},

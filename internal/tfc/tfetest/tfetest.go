@@ -5,11 +5,13 @@ import (
 	"net/http/httptest"
 
 	"github.com/hashicorp/go-tfe"
+
+	"github.com/zkhvan/tfc/internal/tfc"
 )
 
 type Middleware func(http.Handler) http.Handler
 
-func Setup(middlewares ...Middleware) (*tfe.Client, *http.ServeMux, func()) {
+func Setup(middlewares ...Middleware) (*tfc.Client, *http.ServeMux, func()) {
 	mux := http.NewServeMux()
 
 	// Apply middlewares in reverse order so they execute in the order they
@@ -29,5 +31,5 @@ func Setup(middlewares ...Middleware) (*tfe.Client, *http.ServeMux, func()) {
 		panic(err)
 	}
 
-	return client, mux, server.Close
+	return tfc.NewClient(client), mux, server.Close
 }

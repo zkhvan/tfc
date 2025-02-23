@@ -7,12 +7,13 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/charmbracelet/lipgloss"
 	"github.com/hashicorp/go-tfe"
 	"github.com/spf13/cobra"
 
-	"github.com/zkhvan/tfc/internal/tfe/tfepaging"
+	"github.com/zkhvan/tfc/internal/tfc"
 	"github.com/zkhvan/tfc/pkg/cmdutil"
 	"github.com/zkhvan/tfc/pkg/iolib"
 	"github.com/zkhvan/tfc/pkg/text"
@@ -57,7 +58,7 @@ var (
 
 type Options struct {
 	IO        *iolib.IOStreams
-	TFEClient func() (*tfe.Client, error)
+	TFEClient func() (*tfc.Client, error)
 	Clock     *cmdutil.Clock
 	Printer   cmdutil.Printer
 
@@ -186,28 +187,33 @@ func (opts *Options) Run(ctx context.Context) error {
 		}
 	}
 
+	p := cmdutil.FieldPrinter(opts.IO, opts.Columns...)
+
 	var errs []error
 	for _, org := range orgs {
-		p := cmdutil.FieldPrinter(opts.IO, opts.Columns...)
-
-		listOpts := &listOptions{
-			Name:        opts.Name,
-			Tags:        opts.Tags,
-			ExcludeTags: opts.ExcludeTags,
-			VCSRepos:    opts.VCSRepos,
-			RunStatus:   opts.runStatus(),
-			IncludeRuns: slices.Contains(opts.Columns, ColumnRunStatus),
-			Limit:       opts.Limit,
+		o := tfc.WorkspaceListOptions{
+			ListOptions: tfc.ListOptions{
+				Limit: opts.Limit,
+			},
+			Search:           opts.Name,
+			Tags:             strings.Join(opts.Tags, ","),
+			ExcludeTags:      strings.Join(opts.ExcludeTags, ","),
+			CurrentRunStatus: opts.runStatus(),
+			VCSRepos:         opts.VCSRepos,
 		}
 
-		workspaces, reachedLimit, err := listWorkspaces(ctx, client, org.Name, listOpts)
+		if slices.Contains(opts.Columns, ColumnRunStatus) {
+			o.Include = append(o.Include, tfe.WSCurrentRun)
+		}
+
+		workspaces, paging, err := client.Workspaces.List(ctx, org.Name, &o)
 		if err != nil {
 			errs = append(errs, fmt.Errorf("error listing workspaces for %q: %w", org.Name, err))
 			continue
 		}
 
-		if reachedLimit {
-			fmt.Fprintf(opts.IO.Out, "Showing top %d results for org %q\n", opts.Limit, org.Name)
+		if paging.ReachedLimit {
+			fmt.Fprintf(opts.IO.Out, "Showing top %d results for org %q\n\n", opts.Limit, org.Name)
 		}
 
 		for _, ws := range workspaces {
@@ -225,9 +231,9 @@ func (opts *Options) Run(ctx context.Context) error {
 			fields := opts.extractWorkspaceFields(ws, wsVars)
 			p.Write(fields)
 		}
-
-		p.Flush()
 	}
+
+	p.Flush()
 
 	if len(errs) > 0 {
 		return errors.Join(errs...)
@@ -236,11 +242,49 @@ func (opts *Options) Run(ctx context.Context) error {
 	return nil
 }
 
+func (opts *Options) runStatus() string {
+	var statuses []tfe.RunStatus
+
+	if opts.Pending {
+		statuses = append(statuses, tfc.RunStatusesInGroup(tfc.RunStatusGroupPending)...)
+	}
+	if opts.Errored {
+		statuses = append(statuses, tfc.RunStatusesInGroup(tfc.RunStatusGroupErrored)...)
+	}
+	if opts.Running {
+		statuses = append(statuses, tfc.RunStatusesInGroup(tfc.RunStatusGroupRunning)...)
+	}
+	if opts.Holding {
+		statuses = append(statuses, tfc.RunStatusesInGroup(tfc.RunStatusGroupHolding)...)
+	}
+	if opts.Applied {
+		statuses = append(statuses, tfc.RunStatusesInGroup(tfc.RunStatusGroupApplied)...)
+	}
+
+	result := make([]string, 0, len(statuses))
+	for _, s := range statuses {
+		result = append(result, string(s))
+	}
+	return strings.Join(result, ",")
+}
+
 func (opts *Options) extractWorkspaceFields(ws *tfe.Workspace, wsVars []*tfe.Variable) map[string]string {
+	renderTime := func(at time.Time) string {
+		rat := text.RelativeTimeAgo(opts.Clock.Now(), at)
+
+		return TimeStyle.Render(rat)
+	}
+
+	renderStatus := func(status tfe.RunStatus) string {
+		s := lipgloss.NewStyle().Foreground(tfc.RunStatusColor(status))
+
+		return s.Render(string(status))
+	}
+
 	v := map[string]string{
 		ColumnID:            ws.ID,
 		ColumnName:          ws.Name,
-		ColumnUpdatedAt:     TimeStyle.Render(text.RelativeTimeAgo(opts.Clock.Now(), ws.UpdatedAt)),
+		ColumnUpdatedAt:     renderTime(ws.UpdatedAt),
 		ColumnWorkingDir:    ws.WorkingDirectory,
 		ColumnTFVersion:     ws.TerraformVersion,
 		ColumnResourceCount: strconv.Itoa(ws.ResourceCount),
@@ -256,7 +300,7 @@ func (opts *Options) extractWorkspaceFields(ws *tfe.Workspace, wsVars []*tfe.Var
 	}
 
 	if ws.CurrentRun != nil {
-		v[ColumnRunStatus] = renderRunStatus(ws.CurrentRun.Status)
+		v[ColumnRunStatus] = renderStatus(ws.CurrentRun.Status)
 	}
 
 	if len(opts.WithVariables) > 0 {
@@ -275,164 +319,7 @@ func (opts *Options) extractWorkspaceFields(ws *tfe.Workspace, wsVars []*tfe.Var
 	return v
 }
 
-func (opts *Options) runStatus() string {
-	var statuses []tfe.RunStatus
-
-	if opts.Pending {
-		statuses = append(statuses, runStatusMap["pending"]...)
-	}
-	if opts.Errored {
-		statuses = append(statuses, runStatusMap["errored"]...)
-	}
-	if opts.Running {
-		statuses = append(statuses, runStatusMap["running"]...)
-	}
-	if opts.Holding {
-		statuses = append(statuses, runStatusMap["holding"]...)
-	}
-	if opts.Applied {
-		statuses = append(statuses, runStatusMap["applied"]...)
-	}
-
-	result := make([]string, 0, len(statuses))
-	for _, s := range statuses {
-		result = append(result, string(s))
-	}
-	return strings.Join(result, ",")
-}
-
-func renderRunStatus(status tfe.RunStatus) string {
-	var group string
-	for currentGroup, statuses := range runStatusMap {
-		if slices.Contains(statuses, status) {
-			group = currentGroup
-		}
-	}
-	switch group {
-	case "pending":
-		return RunStatusPendingStyle.Render(string(status))
-	case "errored":
-		return RunStatusErroredStyle.Render(string(status))
-	case "running":
-		return RunStatusRunningStyle.Render(string(status))
-	case "holding":
-		return RunStatusHoldingStyle.Render(string(status))
-	case "applied":
-		return RunStatusAppliedStyle.Render(string(status))
-	default:
-		return ""
-	}
-}
-
-var runStatusMap = map[string][]tfe.RunStatus{
-	"pending": {
-		tfe.RunCostEstimated,
-		tfe.RunPlanned,
-		tfe.RunPolicyChecked,
-		tfe.RunPolicyOverride,
-		tfe.RunPostPlanCompleted,
-		tfe.RunPreApplyCompleted,
-	},
-	"errored": {
-		tfe.RunErrored,
-	},
-	"running": {
-		tfe.RunApplying,
-		tfe.RunConfirmed,
-		tfe.RunCostEstimating,
-		tfe.RunFetching,
-		tfe.RunPlanning,
-		tfe.RunPolicyChecking,
-		tfe.RunPostPlanRunning,
-		tfe.RunPreApplyRunning,
-		tfe.RunPrePlanCompleted,
-		tfe.RunPrePlanRunning,
-	},
-	"holding": {
-		tfe.RunApplyQueued,
-		tfe.RunPending,
-		tfe.RunPlanQueued,
-		tfe.RunQueuing,
-	},
-	"applied": {
-		tfe.RunApplied,
-		tfe.RunPlannedAndFinished,
-	},
-}
-
-type listOptions struct {
-	Name        string
-	Tags        []string
-	ExcludeTags []string
-	VCSRepos    []string
-	RunStatus   string
-	IncludeRuns bool
-
-	Limit int
-}
-
-func listWorkspaces(
-	ctx context.Context,
-	client *tfe.Client,
-	org string,
-	opts *listOptions,
-) ([]*tfe.Workspace, bool, error) {
-	f := func(lo tfe.ListOptions) ([]*tfe.Workspace, *tfe.Pagination, error) {
-		wsListOpts := &tfe.WorkspaceListOptions{
-			ListOptions:      lo,
-			Search:           opts.Name,
-			Tags:             strings.Join(opts.Tags, ","),
-			ExcludeTags:      strings.Join(opts.ExcludeTags, ","),
-			CurrentRunStatus: opts.RunStatus,
-		}
-
-		if opts.IncludeRuns {
-			wsListOpts.Include = append(wsListOpts.Include, tfe.WSCurrentRun)
-		}
-
-		result, err := client.Workspaces.List(ctx, org, wsListOpts)
-		if err != nil {
-			return nil, nil, err
-		}
-
-		return result.Items, result.Pagination, nil
-	}
-
-	pager := tfepaging.New(f).SetPageSize(MaxPageSize)
-
-	reachedLimit := false
-	count := 0
-	workspaces := make([]*tfe.Workspace, 0)
-	for i, ws := range pager.All() {
-		if opts.Limit <= count {
-			if i < pager.Current().TotalCount {
-				reachedLimit = true
-			}
-			break
-		}
-
-		if len(opts.VCSRepos) > 0 {
-			if ws.VCSRepo == nil {
-				continue
-			}
-
-			if !slices.Contains(opts.VCSRepos, ws.VCSRepo.Identifier) {
-				continue
-			}
-		}
-
-		workspaces = append(workspaces, ws)
-		count++
-	}
-
-	if err := pager.Err(); err != nil {
-		return nil, false, err
-	}
-
-	return workspaces, reachedLimit, nil
-}
-
-func listWorkspacesVariables(ctx context.Context, client *tfe.Client, id string) (*tfe.VariableList, error) {
+func listWorkspacesVariables(ctx context.Context, client *tfc.Client, id string) (*tfe.VariableList, error) {
 	response, err := client.Variables.List(ctx, id, &tfe.VariableListOptions{})
 	if err != nil {
 		return nil, err
@@ -443,7 +330,7 @@ func listWorkspacesVariables(ctx context.Context, client *tfe.Client, id string)
 
 func listOrganizations(
 	ctx context.Context,
-	client *tfe.Client,
+	client *tfc.Client,
 	name string,
 	nameExact bool,
 ) ([]*tfe.Organization, error) {
@@ -456,23 +343,11 @@ func listOrganizations(
 		return []*tfe.Organization{org}, nil
 	}
 
-	f := func(opts tfe.ListOptions) ([]*tfe.Organization, *tfe.Pagination, error) {
-		response, err := client.Organizations.List(ctx, &tfe.OrganizationListOptions{
-			ListOptions: opts,
-			Query:       name,
-		})
-		if err != nil {
-			return nil, nil, fmt.Errorf("list organizations: %w", err)
-		}
-
-		return response.Items, response.Pagination, nil
-	}
-
-	pager := tfepaging.New(f).SetPageSize(MaxPageSize)
-
-	var orgs []*tfe.Organization
-	for _, org := range pager.All() {
-		orgs = append(orgs, org)
+	orgs, _, err := client.Organizations.List(ctx, &tfc.OrganizationListOptions{
+		Query: name,
+	})
+	if err != nil {
+		return nil, err
 	}
 
 	return orgs, nil

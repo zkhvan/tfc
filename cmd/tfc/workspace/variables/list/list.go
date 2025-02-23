@@ -8,6 +8,7 @@ import (
 	"github.com/hashicorp/go-tfe"
 	"github.com/spf13/cobra"
 
+	"github.com/zkhvan/tfc/internal/tfc"
 	"github.com/zkhvan/tfc/pkg/cmdutil"
 	"github.com/zkhvan/tfc/pkg/iolib"
 	"github.com/zkhvan/tfc/pkg/text"
@@ -42,7 +43,7 @@ var (
 
 type Options struct {
 	IO        *iolib.IOStreams
-	TFEClient func() (*tfe.Client, error)
+	TFEClient func() (*tfc.Client, error)
 	Clock     *cmdutil.Clock
 
 	Org       string

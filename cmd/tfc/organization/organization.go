@@ -1,14 +1,14 @@
-package organizations
+package organization
 
 import (
 	"github.com/spf13/cobra"
 
-	listCmd "github.com/zkhvan/tfc/cmd/tfc/organizations/list"
+	listCmd "github.com/zkhvan/tfc/cmd/tfc/organization/list"
 	"github.com/zkhvan/tfc/pkg/cmdutil"
 	"github.com/zkhvan/tfc/pkg/text"
 )
 
-func NewCmdOrganizations(f *cmdutil.Factory) *cobra.Command {
+func NewCmdOrganization(f *cmdutil.Factory) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "organizations",
 		Aliases: []string{"orgs"},

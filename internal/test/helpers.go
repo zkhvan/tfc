@@ -2,6 +2,7 @@ package test
 
 import (
 	"bytes"
+	"net/http"
 	"slices"
 	"testing"
 )
@@ -26,6 +27,15 @@ func StringSlice(t *testing.T, got, want []string) {
 	t.Helper()
 
 	if !slices.Equal(got, want) {
-		t.Errorf("got: %v, want %v", got, want)
+		t.Errorf("string slice got: %v, want %v", got, want)
+	}
+}
+
+func PathValue(t *testing.T, r *http.Request, path, want string) {
+	t.Helper()
+
+	got := r.PathValue(path)
+	if got != want {
+		t.Errorf("request path value got: %v, want %v", got, want)
 	}
 }
