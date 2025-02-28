@@ -4,7 +4,7 @@ go 1.23.0
 
 require (
 	github.com/MakeNowJust/heredoc v1.0.0
-	github.com/charmbracelet/colorprofile v0.2.1
+	github.com/charmbracelet/colorprofile v0.2.2
 	github.com/charmbracelet/lipgloss v1.0.0
 	github.com/charmbracelet/x/term v0.2.1
 	github.com/google/go-cmp v0.7.0
