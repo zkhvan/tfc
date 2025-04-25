@@ -6,7 +6,7 @@ toolchain go1.24.1
 
 require (
 	github.com/MakeNowJust/heredoc v1.0.0
-	github.com/charmbracelet/colorprofile v0.3.0
+	github.com/charmbracelet/colorprofile v0.3.1
 	github.com/charmbracelet/lipgloss v1.1.0
 	github.com/charmbracelet/x/term v0.2.1
 	github.com/google/go-cmp v0.7.0
@@ -35,6 +35,6 @@ require (
 	github.com/rivo/uniseg v0.4.7 // indirect
 	github.com/xo/terminfo v0.0.0-20220910002029-abceb7e1c41e // indirect
 	golang.org/x/sync v0.10.0 // indirect
-	golang.org/x/sys v0.31.0 // indirect
+	golang.org/x/sys v0.32.0 // indirect
 	golang.org/x/time v0.10.0 // indirect
 )
