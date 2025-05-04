@@ -12,7 +12,7 @@ require (
 	github.com/google/go-cmp v0.7.0
 	github.com/hashicorp/go-tfe v1.78.0
 	github.com/muesli/reflow v0.3.0
-	github.com/sethvargo/go-envconfig v1.2.0
+	github.com/sethvargo/go-envconfig v1.3.0
 	github.com/spf13/cobra v1.9.1
 	github.com/spf13/pflag v1.0.6
 )
