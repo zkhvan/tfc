@@ -10,7 +10,7 @@ require (
 	github.com/charmbracelet/lipgloss v1.1.0
 	github.com/charmbracelet/x/term v0.2.1
 	github.com/google/go-cmp v0.7.0
-	github.com/hashicorp/go-tfe v1.78.0
+	github.com/hashicorp/go-tfe v1.79.0
 	github.com/muesli/reflow v0.3.0
 	github.com/sethvargo/go-envconfig v1.3.0
 	github.com/spf13/cobra v1.9.1
