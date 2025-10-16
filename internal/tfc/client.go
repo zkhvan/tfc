@@ -11,6 +11,7 @@ type Client struct {
 	common service
 
 	Organizations *OrganizationsService
+	Variables     *VariablesService
 	Workspaces    *WorkspacesService
 }
 
@@ -22,6 +23,7 @@ func NewClient(tfeClient *tfe.Client) *Client {
 	c.common.tfe = tfeClient
 
 	c.Organizations = (*OrganizationsService)(&c.common)
+	c.Variables = (*VariablesService)(&c.common)
 	c.Workspaces = (*WorkspacesService)(&c.common)
 
 	return c

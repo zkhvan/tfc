@@ -225,7 +225,7 @@ func (opts *Options) Run(ctx context.Context) error {
 					continue
 				}
 
-				wsVars = append(wsVars, vars.Items...)
+				wsVars = append(wsVars, vars...)
 			}
 
 			fields := opts.extractWorkspaceFields(ws, wsVars)
@@ -319,13 +319,13 @@ func (opts *Options) extractWorkspaceFields(ws *tfe.Workspace, wsVars []*tfe.Var
 	return v
 }
 
-func listWorkspacesVariables(ctx context.Context, client *tfc.Client, id string) (*tfe.VariableList, error) {
-	response, err := client.Variables.List(ctx, id, &tfe.VariableListOptions{})
+func listWorkspacesVariables(ctx context.Context, client *tfc.Client, id string) ([]*tfc.Variable, error) {
+	variables, _, err := client.Variables.List(ctx, id, &tfc.VariableListOptions{})
 	if err != nil {
 		return nil, err
 	}
 
-	return response, nil
+	return variables, nil
 }
 
 func listOrganizations(
