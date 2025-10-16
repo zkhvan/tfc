@@ -20,12 +20,6 @@ convenient shortcuts and workflows for common Terraform Cloud operations.
 go install github.com/zkhvan/tfc@latest
 ```
 
-### Using Homebrew
-
-```bash
-brew install zkhvan/homebrew-tap/tfc
-```
-
 ### Binary releases
 
 Download the latest binary for your platform from the [releases
