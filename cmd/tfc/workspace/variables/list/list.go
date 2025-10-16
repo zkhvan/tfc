@@ -92,13 +92,13 @@ func (opts *Options) Run(ctx context.Context) error {
 		return err
 	}
 
-	vars, err := client.Variables.List(ctx, ws.ID, &tfe.VariableListOptions{})
+	vars, _, err := client.Variables.List(ctx, ws.ID, &tfc.VariableListOptions{})
 	if err != nil {
 		return err
 	}
 
 	p := cmdutil.FieldPrinter(opts.IO, opts.Columns...)
-	for _, v := range vars.Items {
+	for _, v := range vars {
 		p.Write(opts.extractFields(v))
 	}
 	p.Flush()
