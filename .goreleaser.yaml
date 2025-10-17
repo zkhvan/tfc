@@ -51,32 +51,5 @@ archives:
       {{- else }}{{ .Arch }}{{ end }}
       {{- if .Arm }}v{{ .Arm }}{{ end }}
 
-brews:
-  - directory: Formula
-    repository:
-      owner: zkhvan
-      name: homebrew-tap
-      branch: brew-releases/{{ .Version }}
-      token: "{{ .Env.GITHUB_PAT_TOKEN }}"
-      pull_request:
-        enabled: true
-        base:
-          owner: zkhvan
-          name: homebrew-tap
-          branch: main
-    url_template: https://github.com/zkhvan/tfc/releases/download/{{ .Tag }}/{{ .ArtifactName }}
-    download_strategy: GitHubPrivateRepositoryReleaseDownloadStrategy
-
-    custom_require: ../lib/private_strategy
-
-    # Git author used to commit to the repository.
-    commit_author:
-      name: goreleaserbot
-      email: goreleaserbot@example.com
-    commit_msg_template: Brew formula update for {{ .ProjectName }} version {{ .Tag }}
-
-    install: |
-      bin.install "tfc"
-
 checksum:
   name_template: "checksums.txt"
