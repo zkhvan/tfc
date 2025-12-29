@@ -45,6 +45,16 @@ func NewCmdDelete(f *cmdutil.Factory) *cobra.Command {
 			$ tfc workspaces variables delete myorg/myworkspace var-abc123
 		`),
 		Args: cobra.ExactArgs(2),
+		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+			if len(args) == 0 {
+				// Complete first argument: org/workspace
+				return cmdutil.CompletionOrgWorkspace(opts.TFEClient)(cmd, args, toComplete)
+			} else if len(args) == 1 {
+				// Complete second argument: variable name
+				return cmdutil.CompletionVariableNames(opts.TFEClient)(cmd, args, toComplete)
+			}
+			return nil, cobra.ShellCompDirectiveNoFileComp
+		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.Complete(args)
 			return opts.Run(cmd.Context())
