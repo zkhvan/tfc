@@ -474,4 +474,3 @@ func TestCompletionVariableNames_Timeout(t *testing.T) {
 		},
 	)
 }
-

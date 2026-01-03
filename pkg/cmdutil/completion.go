@@ -118,8 +118,8 @@ func CompletionOrgWorkspace(tfeClient func() (*tfc.Client, error)) func(
 			if toComplete != "" {
 				orgOpts.Query = toComplete
 			}
-			orgs, _, err := client.Organizations.List(ctx, orgOpts)
-			if err != nil {
+			orgs, _, err2 := client.Organizations.List(ctx, orgOpts)
+			if err2 != nil {
 				return nil, cobra.ShellCompDirectiveNoFileComp
 			}
 
