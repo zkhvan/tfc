@@ -1,6 +1,8 @@
 package tfc
 
 import (
+	"context"
+
 	"github.com/charmbracelet/lipgloss"
 	"github.com/hashicorp/go-tfe"
 
@@ -84,3 +86,13 @@ const (
 	RunGroupFinal       RunGroup = "final"
 	RunGroupDiscardable RunGroup = "discardable"
 )
+
+type RunCreateOptions = tfe.RunCreateOptions
+
+// RunsService provides methods for working with Terraform runs.
+type RunsService service
+
+// Create creates a new run with the given options.
+func (s *RunsService) Create(ctx context.Context, options RunCreateOptions) (*Run, error) {
+	return s.tfe.Runs.Create(ctx, options)
+}
