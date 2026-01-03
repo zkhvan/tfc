@@ -9,8 +9,10 @@ convenient shortcuts and workflows for common Terraform Cloud operations.
 
 ## Features
 
-- List workspaces and workspace variables
+- List workspaces
+- List, edit, delete and set workspace variables
 - List organizations
+- List and trigger runs
 
 ## Installation
 
