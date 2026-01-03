@@ -93,17 +93,16 @@ func GenerateOptionCompletionFunc(opts []string) func(
 }
 
 // CompletionOrgWorkspace returns a completion function that provides organization/workspace
-// pairs for shell completion. It queries the TFE API with a 2 second timeout.
+// pairs for shell completion with server-side filtering.
 func CompletionOrgWorkspace(tfeClient func() (*tfc.Client, error)) func(
 	*cobra.Command, []string, string,
 ) ([]string, cobra.ShellCompDirective) {
-	return func(_ *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-		// Only complete the first argument
+	return func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		if len(args) != 0 {
 			return nil, cobra.ShellCompDirectiveNoFileComp
 		}
 
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		ctx, cancel := context.WithTimeout(cmd.Context(), 5*time.Second)
 		defer cancel()
 
 		client, err := tfeClient()
@@ -111,33 +110,39 @@ func CompletionOrgWorkspace(tfeClient func() (*tfc.Client, error)) func(
 			return nil, cobra.ShellCompDirectiveNoFileComp
 		}
 
-		// List organizations
-		orgs, _, err := client.Organizations.List(ctx, &tfc.OrganizationListOptions{})
+		parsed := tfc.ParseOrgWorkspace(toComplete)
+
+		// Complete organizations with trailing slash (no space after)
+		if !parsed.HasOrg() {
+			orgOpts := &tfc.OrganizationListOptions{}
+			if toComplete != "" {
+				orgOpts.Query = toComplete
+			}
+			orgs, _, err := client.Organizations.List(ctx, orgOpts)
+			if err != nil {
+				return nil, cobra.ShellCompDirectiveNoFileComp
+			}
+
+			var completions []string
+			for _, org := range orgs {
+				completions = append(completions, fmt.Sprintf("%s/", org.Name))
+			}
+			return completions, cobra.ShellCompDirectiveNoFileComp | cobra.ShellCompDirectiveNoSpace
+		}
+
+		// Complete workspaces for the specified organization
+		workspaces, _, err := client.Workspaces.List(ctx, parsed.Org, &tfc.WorkspaceListOptions{
+			Search:      parsed.Workspace,
+			ListOptions: tfc.ListOptions{Limit: 100},
+		})
 		if err != nil {
-			// On timeout or error, return empty list gracefully
 			return nil, cobra.ShellCompDirectiveNoFileComp
 		}
 
 		var completions []string
-		for _, org := range orgs {
-			// List workspaces for each organization
-			workspaces, _, err := client.Workspaces.List(ctx, org.Name, &tfc.WorkspaceListOptions{
-				ListOptions: tfc.ListOptions{Limit: 100},
-			})
-			if err != nil {
-				// Skip this org on error
-				continue
-			}
-
-			for _, ws := range workspaces {
-				completion := fmt.Sprintf("%s/%s", org.Name, ws.Name)
-				// Filter by prefix
-				if strings.HasPrefix(completion, toComplete) {
-					completions = append(completions, completion)
-				}
-			}
+		for _, ws := range workspaces {
+			completions = append(completions, fmt.Sprintf("%s/%s", parsed.Org, ws.Name))
 		}
-
 		return completions, cobra.ShellCompDirectiveNoFileComp
 	}
 }
@@ -147,20 +152,17 @@ func CompletionOrgWorkspace(tfeClient func() (*tfc.Client, error)) func(
 func CompletionVariableNames(tfeClient func() (*tfc.Client, error)) func(
 	*cobra.Command, []string, string,
 ) ([]string, cobra.ShellCompDirective) {
-	return func(_ *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-		// Only complete the second argument
+	return func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		if len(args) != 1 {
 			return nil, cobra.ShellCompDirectiveNoFileComp
 		}
 
-		// Parse org/workspace from first argument
-		parts := strings.Split(args[0], "/")
-		if len(parts) != 2 {
+		parsed := tfc.ParseOrgWorkspace(args[0])
+		if !parsed.IsComplete() {
 			return nil, cobra.ShellCompDirectiveNoFileComp
 		}
-		org, workspace := parts[0], parts[1]
 
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		ctx, cancel := context.WithTimeout(cmd.Context(), 5*time.Second)
 		defer cancel()
 
 		client, err := tfeClient()
@@ -169,7 +171,7 @@ func CompletionVariableNames(tfeClient func() (*tfc.Client, error)) func(
 		}
 
 		// Read workspace to get workspace ID
-		ws, err := client.Workspaces.Read(ctx, org, workspace)
+		ws, err := client.Workspaces.Read(ctx, parsed.Org, parsed.Workspace)
 		if err != nil {
 			return nil, cobra.ShellCompDirectiveNoFileComp
 		}
