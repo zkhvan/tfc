@@ -2,7 +2,9 @@ package tfc
 
 import (
 	"context"
+	"fmt"
 	"slices"
+	"strings"
 
 	"github.com/hashicorp/go-tfe"
 
@@ -12,6 +14,65 @@ import (
 type WorkspacesService service
 
 type Workspace = tfe.Workspace
+
+// OrgWorkspace represents a parsed organization/workspace identifier.
+type OrgWorkspace struct {
+	Org       string
+	Workspace string
+}
+
+// IsComplete returns true if both org and workspace are present.
+func (ow OrgWorkspace) IsComplete() bool {
+	return ow.Org != "" && ow.Workspace != ""
+}
+
+// HasOrg returns true if an organization name is present.
+func (ow OrgWorkspace) HasOrg() bool {
+	return ow.Org != ""
+}
+
+// String returns the org/workspace format.
+func (ow OrgWorkspace) String() string {
+	if ow.HasOrg() {
+		return fmt.Sprintf("%s/%s", ow.Org, ow.Workspace)
+	}
+	return ow.Workspace
+}
+
+// Validate returns an error if the org/workspace is not complete.
+func (ow OrgWorkspace) Validate() error {
+	if !ow.IsComplete() {
+		if ow.Org == "" && ow.Workspace == "" {
+			return fmt.Errorf("organization and workspace cannot be empty")
+		}
+		if ow.Org == "" {
+			return fmt.Errorf("organization cannot be empty")
+		}
+		return fmt.Errorf("workspace cannot be empty")
+	}
+	return nil
+}
+
+// ParseOrgWorkspace parses an "org/workspace" identifier.
+// Handles partial input for shell completion scenarios.
+//
+// Examples:
+//   - "myorg/workspace" -> OrgWorkspace{Org: "myorg", Workspace: "workspace"}
+//   - "myorg/" -> OrgWorkspace{Org: "myorg", Workspace: ""}
+//   - "myorg" -> OrgWorkspace{Org: "", Workspace: "myorg"}
+//   - "" -> OrgWorkspace{Org: "", Workspace: ""}
+func ParseOrgWorkspace(input string) OrgWorkspace {
+	if idx := strings.Index(input, "/"); idx != -1 {
+		return OrgWorkspace{
+			Org:       input[:idx],
+			Workspace: input[idx+1:],
+		}
+	}
+	return OrgWorkspace{
+		Org:       "",
+		Workspace: input,
+	}
+}
 
 type WorkspaceListOptions struct {
 	ListOptions

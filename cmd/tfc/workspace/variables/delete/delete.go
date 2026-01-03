@@ -3,7 +3,6 @@ package delete
 import (
 	"context"
 	"fmt"
-	"strings"
 
 	"github.com/hashicorp/go-tfe"
 	"github.com/spf13/cobra"
@@ -65,7 +64,9 @@ func NewCmdDelete(f *cmdutil.Factory) *cobra.Command {
 }
 
 func (opts *Options) Complete(args []string) {
-	opts.Org, opts.Workspace = parse(args[0])
+	parsed := tfc.ParseOrgWorkspace(args[0])
+	opts.Org = parsed.Org
+	opts.Workspace = parsed.Workspace
 	opts.Identifier = args[1]
 }
 
@@ -106,9 +107,4 @@ func (opts *Options) Run(ctx context.Context) error {
 	fmt.Fprintf(opts.IO.Out, "Variable %q deleted successfully\n", targetVar.Key)
 
 	return nil
-}
-
-func parse(workspace string) (string, string) {
-	parts := strings.Split(workspace, "/")
-	return parts[0], parts[1]
 }
