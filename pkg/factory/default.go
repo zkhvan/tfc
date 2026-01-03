@@ -35,6 +35,7 @@ func New(appVersion string) (*cmdutil.Factory, error) {
 	}
 
 	f.IOStreams = ioStreams(f)
+	f.Editor = editorFunc(f)
 	f.TFEClient = tfeClientFunc(f)
 
 	return f, nil
@@ -42,6 +43,12 @@ func New(appVersion string) (*cmdutil.Factory, error) {
 
 func ioStreams(_ *cmdutil.Factory) *iolib.IOStreams {
 	return iolib.System()
+}
+
+func editorFunc(f *cmdutil.Factory) func() *cmdutil.Editor {
+	return func() *cmdutil.Editor {
+		return cmdutil.NewEditor(f.IOStreams)
+	}
 }
 
 func tfeClientFunc(_ *cmdutil.Factory) func() (*tfc.Client, error) {

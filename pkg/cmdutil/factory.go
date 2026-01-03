@@ -12,5 +12,6 @@ type Factory struct {
 	IOStreams *iolib.IOStreams
 	Clock     *Clock
 
+	Editor    func() *Editor
 	TFEClient func() (*tfc.Client, error)
 }

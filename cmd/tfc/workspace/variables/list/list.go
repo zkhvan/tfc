@@ -3,7 +3,6 @@ package list
 import (
 	"context"
 	"strconv"
-	"strings"
 
 	"github.com/hashicorp/go-tfe"
 	"github.com/spf13/cobra"
@@ -65,7 +64,12 @@ func NewCmdList(f *cmdutil.Factory) *cobra.Command {
 		Long: text.Heredoc(`
 			List a workspace's variables.
 		`),
-		Args: cobra.ExactArgs(1),
+		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+			if len(args) == 0 {
+				return cmdutil.CompletionOrgWorkspace(opts.TFEClient)(cmd, args, toComplete)
+			}
+			return nil, cobra.ShellCompDirectiveNoFileComp
+		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.Complete(cmd, args)
 			return opts.Run(cmd.Context())
@@ -78,7 +82,9 @@ func NewCmdList(f *cmdutil.Factory) *cobra.Command {
 }
 
 func (opts *Options) Complete(_ *cobra.Command, args []string) {
-	opts.Org, opts.Workspace = parse(args[0])
+	parsed := tfc.ParseOrgWorkspace(args[0])
+	opts.Org = parsed.Org
+	opts.Workspace = parsed.Workspace
 }
 
 func (opts *Options) Run(ctx context.Context) error {
@@ -118,10 +124,4 @@ func (opts *Options) extractFields(v *tfe.Variable) map[string]string {
 	}
 
 	return out
-}
-
-func parse(workspace string) (string, string) {
-	parts := strings.Split(workspace, "/")
-
-	return parts[0], parts[1]
 }

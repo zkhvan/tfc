@@ -4,6 +4,7 @@ import (
 	"github.com/spf13/cobra"
 
 	deleteCmd "github.com/zkhvan/tfc/cmd/tfc/workspace/variables/delete"
+	editCmd "github.com/zkhvan/tfc/cmd/tfc/workspace/variables/edit"
 	listCmd "github.com/zkhvan/tfc/cmd/tfc/workspace/variables/list"
 	setCmd "github.com/zkhvan/tfc/cmd/tfc/workspace/variables/set"
 	"github.com/zkhvan/tfc/pkg/cmdutil"
@@ -23,6 +24,7 @@ func NewCmdVariables(f *cmdutil.Factory) *cobra.Command {
 	cmd.AddCommand(listCmd.NewCmdList(f))
 	cmd.AddCommand(setCmd.NewCmdSet(f))
 	cmd.AddCommand(deleteCmd.NewCmdDelete(f))
+	cmd.AddCommand(editCmd.NewCmdEdit(f))
 
 	return cmd
 }
