@@ -12,6 +12,7 @@ import (
 	"github.com/zkhvan/tfc/internal/tfc/tfetest"
 	"github.com/zkhvan/tfc/pkg/cmdutil"
 	"github.com/zkhvan/tfc/pkg/iolib"
+	"github.com/zkhvan/tfc/pkg/tfconfig"
 )
 
 func TestSet_update_existing_by_name(t *testing.T) {
@@ -79,7 +80,7 @@ func TestSet_update_existing_by_name(t *testing.T) {
 		},
 	)
 
-	result := runCommand(t, client, "myorg/my-workspace", "MY_VAR", "--value", "new-value")
+	result := runCommand(t, client, "-W", "myorg/my-workspace", "MY_VAR", "--value", "new-value")
 
 	test.BufferEmpty(t, result.ErrBuf)
 	test.Buffer(t, result.OutBuf, "Variable \"MY_VAR\" updated successfully\n")
@@ -150,7 +151,7 @@ func TestSet_update_existing_by_id(t *testing.T) {
 		},
 	)
 
-	result := runCommand(t, client, "myorg/my-workspace", "var-abc123", "--value", "new-value")
+	result := runCommand(t, client, "-W", "myorg/my-workspace", "var-abc123", "--value", "new-value")
 
 	test.BufferEmpty(t, result.ErrBuf)
 	test.Buffer(t, result.OutBuf, "Variable \"MY_VAR\" updated successfully\n")
@@ -209,7 +210,7 @@ func TestSet_create_new_variable(t *testing.T) {
 		},
 	)
 
-	result := runCommand(t, client, "myorg/my-workspace", "NEW_VAR", "--value", "new-value")
+	result := runCommand(t, client, "-W", "myorg/my-workspace", "NEW_VAR", "--value", "new-value")
 
 	test.BufferEmpty(t, result.ErrBuf)
 	test.Buffer(t, result.OutBuf, "Variable \"NEW_VAR\" created successfully\n")
@@ -268,7 +269,7 @@ func TestSet_with_hcl_flag(t *testing.T) {
 		},
 	)
 
-	result := runCommand(t, client, "myorg/my-workspace", "CONFIG", "--value", `{"key": "value"}`, "--hcl")
+	result := runCommand(t, client, "-W", "myorg/my-workspace", "CONFIG", "--value", `{"key": "value"}`, "--hcl")
 
 	test.BufferEmpty(t, result.ErrBuf)
 	test.Buffer(t, result.OutBuf, "Variable \"CONFIG\" created successfully\n")
@@ -327,7 +328,7 @@ func TestSet_with_sensitive_flag(t *testing.T) {
 		},
 	)
 
-	result := runCommand(t, client, "myorg/my-workspace", "SECRET", "--value", "secret-value", "--sensitive")
+	result := runCommand(t, client, "-W", "myorg/my-workspace", "SECRET", "--value", "secret-value", "--sensitive")
 
 	test.BufferEmpty(t, result.ErrBuf)
 	test.Buffer(t, result.OutBuf, "Variable \"SECRET\" created successfully\n")
@@ -386,7 +387,7 @@ func TestSet_with_env_category(t *testing.T) {
 		},
 	)
 
-	result := runCommand(t, client, "myorg/my-workspace", "PATH", "--value", "/usr/local/bin", "--category", "env")
+	result := runCommand(t, client, "-W", "myorg/my-workspace", "PATH", "--value", "/usr/local/bin", "--category", "env")
 
 	test.BufferEmpty(t, result.ErrBuf)
 	test.Buffer(t, result.OutBuf, "Variable \"PATH\" created successfully\n")
@@ -398,8 +399,9 @@ func runCommand(t *testing.T, client *tfc.Client, args ...string) *tfetest.CmdOu
 	ios, _, stdout, stderr := iolib.Test()
 
 	f := &cmdutil.Factory{
-		IOStreams: ios,
-		TFEClient: func() (*tfc.Client, error) { return client, nil },
+		IOStreams:       ios,
+		TFEClient:       func() (*tfc.Client, error) { return client, nil },
+		TerraformConfig: func() *tfconfig.TerraformConfig { return nil },
 	}
 
 	cmd := set.NewCmdSet(f)

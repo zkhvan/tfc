@@ -11,72 +11,77 @@ import (
 	"github.com/zkhvan/tfc/pkg/cmdutil"
 	"github.com/zkhvan/tfc/pkg/iolib"
 	"github.com/zkhvan/tfc/pkg/text"
+	"github.com/zkhvan/tfc/pkg/tfconfig"
 )
 
 type Options struct {
-	IO        *iolib.IOStreams
-	TFEClient func() (*tfc.Client, error)
+	IO              *iolib.IOStreams
+	TFEClient       func() (*tfc.Client, error)
+	TerraformConfig func() *tfconfig.TerraformConfig
 
-	Org        string
-	Workspace  string
-	Identifier string // Variable name or ID
+	WorkspaceID cmdutil.WorkspaceIdentifier
+	Identifier  string // Variable name or ID
 }
 
 func NewCmdDelete(f *cmdutil.Factory) *cobra.Command {
 	opts := &Options{
-		IO:        f.IOStreams,
-		TFEClient: f.TFEClient,
+		IO:              f.IOStreams,
+		TFEClient:       f.TFEClient,
+		TerraformConfig: f.TerraformConfig,
 	}
 
 	cmd := &cobra.Command{
-		Use:   "delete <ORG/WORKSPACE> <NAME|ID>",
+		Use:   "delete <NAME|ID>",
 		Short: "Delete a workspace variable",
 		Long: text.Heredoc(`
 			Delete a workspace variable.
 
 			The variable can be identified by either its name or ID.
+
+			If -W/--workspace is not specified and state.tf is present,
+			the organization and workspace will be read from state.tf.
 		`),
 		Example: text.Heredoc(`
 			# Delete a variable by name
-			$ tfc workspaces variables delete myorg/myworkspace MY_VAR
+			$ tfc workspaces variables delete MY_VAR
+
+			# Delete a variable with explicit org/workspace
+			$ tfc workspaces variables delete MY_VAR -W myorg/myworkspace
 
 			# Delete a variable by ID
-			$ tfc workspaces variables delete myorg/myworkspace var-abc123
+			$ tfc workspaces variables delete var-abc123
 		`),
-		Args: cobra.ExactArgs(2),
-		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-			if len(args) == 0 {
-				// Complete first argument: org/workspace
-				return cmdutil.CompletionOrgWorkspace(opts.TFEClient)(cmd, args, toComplete)
-			} else if len(args) == 1 {
-				// Complete second argument: variable name
-				return cmdutil.CompletionVariableNames(opts.TFEClient)(cmd, args, toComplete)
-			}
-			return nil, cobra.ShellCompDirectiveNoFileComp
-		},
+		Args:              cobra.ExactArgs(1),
+		ValidArgsFunction: cmdutil.CompletionVariableNamesFromWorkspaceFlag(opts.TFEClient, opts.TerraformConfig),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			opts.Complete(args)
+			opts.Complete(cmd, args)
 			return opts.Run(cmd.Context())
 		},
 	}
 
+	cmdutil.AddWorkspaceFlag(cmd, &opts.WorkspaceID, opts.TFEClient)
+
+	_ = cmdutil.MarkFlagsWithNoFileCompletions(cmd)
+
 	return cmd
 }
 
-func (opts *Options) Complete(args []string) {
-	parsed := tfc.ParseOrgWorkspace(args[0])
-	opts.Org = parsed.Org
-	opts.Workspace = parsed.Workspace
-	opts.Identifier = args[1]
+func (opts *Options) Complete(cmd *cobra.Command, args []string) {
+	opts.Identifier = args[0]
+	cmdutil.CompleteWorkspaceIdentifierSilent(cmd, &opts.WorkspaceID, opts.TerraformConfig)
 }
 
 func (opts *Options) Run(ctx context.Context) error {
+	if err := opts.WorkspaceID.Validate(); err != nil {
+		return fmt.Errorf("workspace required: use -W ORG/WORKSPACE or ensure state.tf exists")
+	}
+
 	client, err := opts.TFEClient()
 	if err != nil {
 		return err
 	}
 
-	ws, err := client.Workspaces.Read(ctx, opts.Org, opts.Workspace)
+	ws, err := client.Workspaces.Read(ctx, opts.WorkspaceID.Org, opts.WorkspaceID.Workspace)
 	if err != nil {
 		return err
 	}

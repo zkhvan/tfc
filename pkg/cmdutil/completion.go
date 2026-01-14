@@ -12,6 +12,7 @@ import (
 	"github.com/spf13/pflag"
 
 	"github.com/zkhvan/tfc/internal/tfc"
+	"github.com/zkhvan/tfc/pkg/tfconfig"
 )
 
 func MarkAllFlagsWithNoFileCompletions(cmd *cobra.Command) error {
@@ -187,6 +188,137 @@ func CompletionVariableNames(tfeClient func() (*tfc.Client, error)) func(
 		var completions []string
 		for _, v := range vars {
 			// Filter by prefix
+			if strings.HasPrefix(v.Key, toComplete) {
+				completions = append(completions, v.Key)
+			}
+		}
+
+		return completions, cobra.ShellCompDirectiveNoFileComp
+	}
+}
+
+// CompletionVariableNamesFromFlags returns a completion function that provides variable names
+// reading org/workspace from flags or falling back to state.tf.
+func CompletionVariableNamesFromFlags(
+	tfeClient func() (*tfc.Client, error),
+	terraformConfig func() *tfconfig.TerraformConfig,
+) func(
+	*cobra.Command, []string, string,
+) ([]string, cobra.ShellCompDirective) {
+	return func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		if len(args) != 0 {
+			return nil, cobra.ShellCompDirectiveNoFileComp
+		}
+
+		org, _ := cmd.Flags().GetString("org")
+		workspace, _ := cmd.Flags().GetString("workspace")
+
+		if org == "" || workspace == "" {
+			cfg := terraformConfig()
+			if cfg != nil && cfg.IsValid() {
+				if org == "" {
+					org = cfg.Organization
+				}
+				if workspace == "" {
+					workspace = cfg.Workspace.Name
+				}
+			}
+		}
+
+		if org == "" || workspace == "" {
+			return nil, cobra.ShellCompDirectiveNoFileComp
+		}
+
+		ctx, cancel := context.WithTimeout(cmd.Context(), 5*time.Second)
+		defer cancel()
+
+		client, err := tfeClient()
+		if err != nil {
+			return nil, cobra.ShellCompDirectiveNoFileComp
+		}
+
+		ws, err := client.Workspaces.Read(ctx, org, workspace)
+		if err != nil {
+			return nil, cobra.ShellCompDirectiveNoFileComp
+		}
+
+		vars, _, err := client.Variables.List(ctx, ws.ID, &tfc.VariableListOptions{
+			ListOptions: tfc.ListOptions{Limit: 1000},
+		})
+		if err != nil {
+			return nil, cobra.ShellCompDirectiveNoFileComp
+		}
+
+		var completions []string
+		for _, v := range vars {
+			if strings.HasPrefix(v.Key, toComplete) {
+				completions = append(completions, v.Key)
+			}
+		}
+
+		return completions, cobra.ShellCompDirectiveNoFileComp
+	}
+}
+
+// CompletionVariableNamesFromWorkspaceFlag returns a completion function that
+// provides variable names reading org/workspace from the -W flag or falling
+// back to state.tf.
+func CompletionVariableNamesFromWorkspaceFlag(
+	tfeClient func() (*tfc.Client, error),
+	terraformConfig func() *tfconfig.TerraformConfig,
+) func(
+	*cobra.Command, []string, string,
+) ([]string, cobra.ShellCompDirective) {
+	return func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		if len(args) != 0 {
+			return nil, cobra.ShellCompDirectiveNoFileComp
+		}
+
+		// Get the -W flag value
+		workspaceFlag, _ := cmd.Flags().GetString("workspace")
+
+		var org, workspace string
+
+		if workspaceFlag != "" {
+			// Parse the flag
+			parsed := tfc.ParseOrgWorkspace(workspaceFlag)
+			org = parsed.Org
+			workspace = parsed.Workspace
+		} else {
+			// Fall back to state.tf
+			cfg := terraformConfig()
+			if cfg != nil && cfg.IsValid() {
+				org = cfg.Organization
+				workspace = cfg.Workspace.Name
+			}
+		}
+
+		if org == "" || workspace == "" {
+			return nil, cobra.ShellCompDirectiveNoFileComp
+		}
+
+		ctx, cancel := context.WithTimeout(cmd.Context(), 5*time.Second)
+		defer cancel()
+
+		client, err := tfeClient()
+		if err != nil {
+			return nil, cobra.ShellCompDirectiveNoFileComp
+		}
+
+		ws, err := client.Workspaces.Read(ctx, org, workspace)
+		if err != nil {
+			return nil, cobra.ShellCompDirectiveNoFileComp
+		}
+
+		vars, _, err := client.Variables.List(ctx, ws.ID, &tfc.VariableListOptions{
+			ListOptions: tfc.ListOptions{Limit: 1000},
+		})
+		if err != nil {
+			return nil, cobra.ShellCompDirectiveNoFileComp
+		}
+
+		var completions []string
+		for _, v := range vars {
 			if strings.HasPrefix(v.Key, toComplete) {
 				completions = append(completions, v.Key)
 			}

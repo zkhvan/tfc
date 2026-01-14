@@ -12,6 +12,7 @@ import (
 	"github.com/zkhvan/tfc/internal/tfc/tfetest"
 	"github.com/zkhvan/tfc/pkg/cmdutil"
 	"github.com/zkhvan/tfc/pkg/iolib"
+	"github.com/zkhvan/tfc/pkg/tfconfig"
 )
 
 func TestDelete_by_name(t *testing.T) {
@@ -65,7 +66,7 @@ func TestDelete_by_name(t *testing.T) {
 		},
 	)
 
-	result := runCommand(t, client, "myorg/my-workspace", "MY_VAR")
+	result := runCommand(t, client, "-W", "myorg/my-workspace", "MY_VAR")
 
 	test.BufferEmpty(t, result.ErrBuf)
 	test.Buffer(t, result.OutBuf, "Variable \"MY_VAR\" deleted successfully\n")
@@ -122,7 +123,7 @@ func TestDelete_by_id(t *testing.T) {
 		},
 	)
 
-	result := runCommand(t, client, "myorg/my-workspace", "var-abc123")
+	result := runCommand(t, client, "-W", "myorg/my-workspace", "var-abc123")
 
 	test.BufferEmpty(t, result.ErrBuf)
 	test.Buffer(t, result.OutBuf, "Variable \"MY_VAR\" deleted successfully\n")
@@ -172,7 +173,7 @@ func TestDelete_variable_not_found(t *testing.T) {
 		},
 	)
 
-	result := runCommand(t, client, "myorg/my-workspace", "NONEXISTENT_VAR")
+	result := runCommand(t, client, "-W", "myorg/my-workspace", "NONEXISTENT_VAR")
 
 	test.BufferEmpty(t, result.OutBuf)
 	test.Buffer(t, result.ErrBuf, "variable \"NONEXISTENT_VAR\" not found\n")
@@ -184,8 +185,9 @@ func runCommand(t *testing.T, client *tfc.Client, args ...string) *tfetest.CmdOu
 	ios, _, stdout, stderr := iolib.Test()
 
 	f := &cmdutil.Factory{
-		IOStreams: ios,
-		TFEClient: func() (*tfc.Client, error) { return client, nil },
+		IOStreams:       ios,
+		TFEClient:       func() (*tfc.Client, error) { return client, nil },
+		TerraformConfig: func() *tfconfig.TerraformConfig { return nil },
 	}
 
 	cmd := delete.NewCmdDelete(f)

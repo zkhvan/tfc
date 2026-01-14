@@ -16,11 +16,11 @@ import (
 	"github.com/zkhvan/tfc/pkg/iolib"
 	"github.com/zkhvan/tfc/pkg/term/color"
 	"github.com/zkhvan/tfc/pkg/text"
+	"github.com/zkhvan/tfc/pkg/tfconfig"
 )
 
 var (
 	ColumnsDefault = []string{
-		ColumnWorkspace,
 		ColumnMessage,
 		ColumnStatus,
 		ColumnCreatedAt,
@@ -58,9 +58,10 @@ const (
 
 func NewCmdList(f *cmdutil.Factory) *cobra.Command {
 	opts := &Options{
-		IO:        f.IOStreams,
-		TFEClient: f.TFEClient,
-		Clock:     f.Clock,
+		IO:              f.IOStreams,
+		TFEClient:       f.TFEClient,
+		Clock:           f.Clock,
+		TerraformConfig: f.TerraformConfig,
 	}
 
 	cmd := &cobra.Command{
@@ -77,7 +78,8 @@ func NewCmdList(f *cmdutil.Factory) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringVarP(&opts.Organization, "org", "o", "", "Organization name.")
+	cmd.Flags().StringVarP(&opts.Org, "org", "o", "", "Organization name.")
+	cmd.Flags().StringVarP(&opts.Workspace, "workspace", "w", "", "Workspace name.")
 	cmd.Flags().StringVarP(&opts.Commit, "commit", "C", "", "Commit SHA.")
 
 	cmd.Flags().IntVarP(&opts.Limit, "limit", "l", 20, "Limit the number of results.")
@@ -89,17 +91,36 @@ func NewCmdList(f *cmdutil.Factory) *cobra.Command {
 }
 
 type Options struct {
-	IO        *iolib.IOStreams
-	TFEClient func() (*tfc.Client, error)
-	Clock     *cmdutil.Clock
+	IO              *iolib.IOStreams
+	TFEClient       func() (*tfc.Client, error)
+	Clock           *cmdutil.Clock
+	TerraformConfig func() *tfconfig.TerraformConfig
 
-	Limit        int
-	Columns      []string
-	Organization string
-	Commit       string
+	Limit          int
+	Columns        []string
+	ColumnsChanged bool
+	Commit         string
+
+	Org       string
+	Workspace string
 }
 
-func (*Options) Complete(_ *cobra.Command, _ []string) {
+func (opts *Options) Complete(cmd *cobra.Command, _ []string) {
+	orgChanged := cmd.Flags().Changed("org")
+	workspaceChanged := cmd.Flags().Changed("workspace")
+
+	if !orgChanged || !workspaceChanged {
+		if cfg := opts.TerraformConfig(); cfg != nil && cfg.IsValid() {
+			if !orgChanged {
+				opts.Org = cfg.Organization
+			}
+			if !workspaceChanged {
+				opts.Workspace = cfg.Workspace.Name
+			}
+		}
+	}
+
+	opts.ColumnsChanged = cmd.Flags().Changed("columns")
 }
 
 func (opts *Options) Run(ctx context.Context) error {
@@ -108,25 +129,59 @@ func (opts *Options) Run(ctx context.Context) error {
 		return err
 	}
 
-	o := tfc.OrganizationRunListOptions{
-		ListOptions: tfc.ListOptions{
-			Limit: opts.Limit,
-		},
-		Commit: opts.Commit,
+	if opts.Workspace != "" {
+		return opts.listWorkspaceRuns(ctx, client)
 	}
-	runs, paging, err := client.Organizations.ListRuns(ctx, opts.Organization, &o)
+
+	return opts.listOrgRuns(ctx, client)
+}
+
+func (opts *Options) listWorkspaceRuns(ctx context.Context, client *tfc.Client) error {
+	ws, err := client.Workspaces.Read(ctx, opts.Org, opts.Workspace)
 	if err != nil {
 		return err
 	}
 
+	runOpts := &tfc.WorkspaceRunListOptions{
+		Limit: opts.Limit,
+	}
+	runs, paging, err := client.Runs.List(ctx, ws.ID, runOpts)
+	if err != nil {
+		return err
+	}
+
+	return opts.displayRuns(runs, paging, false)
+}
+
+func (opts *Options) listOrgRuns(ctx context.Context, client *tfc.Client) error {
+	o := tfc.OrganizationRunListOptions{
+		ListOptions: tfc.ListOptions{
+			Limit: opts.Limit,
+		},
+		Commit:  opts.Commit,
+		Include: []tfe.RunIncludeOpt{tfe.RunWorkspace},
+	}
+	runs, paging, err := client.Organizations.ListRuns(ctx, opts.Org, &o)
+	if err != nil {
+		return err
+	}
+
+	return opts.displayRuns(runs, paging, true)
+}
+
+func (opts *Options) displayRuns(runs []*tfe.Run, paging *tfc.Pagination, showWorkspace bool) error {
 	if paging.ReachedLimit {
 		fmt.Fprintf(opts.IO.Out, "Showing top %d results\n\n", opts.Limit)
 	}
 
-	p := cmdutil.FieldPrinter(opts.IO, opts.Columns...)
+	columns := opts.Columns
+	if !opts.ColumnsChanged && showWorkspace {
+		columns = append([]string{ColumnWorkspace}, columns...)
+	}
+
+	p := cmdutil.FieldPrinter(opts.IO, columns...)
 	for _, run := range runs {
 		fields := opts.ExtractFields(run)
-
 		p.Write(fields)
 	}
 	p.Flush()

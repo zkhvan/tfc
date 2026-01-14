@@ -13,15 +13,16 @@ import (
 	"github.com/zkhvan/tfc/pkg/iolib"
 	"github.com/zkhvan/tfc/pkg/ptr"
 	"github.com/zkhvan/tfc/pkg/text"
+	"github.com/zkhvan/tfc/pkg/tfconfig"
 )
 
 type Options struct {
-	IO        *iolib.IOStreams
-	TFEClient func() (*tfc.Client, error)
-	Clock     *cmdutil.Clock
+	IO              *iolib.IOStreams
+	TFEClient       func() (*tfc.Client, error)
+	Clock           *cmdutil.Clock
+	TerraformConfig func() *tfconfig.TerraformConfig
 
-	Org       string
-	Workspace string
+	WorkspaceID cmdutil.WorkspaceIdentifier
 
 	Message     string
 	PlanOnly    bool
@@ -31,43 +32,52 @@ type Options struct {
 
 func NewCmdTrigger(f *cmdutil.Factory) *cobra.Command {
 	opts := &Options{
-		IO:        f.IOStreams,
-		TFEClient: f.TFEClient,
-		Clock:     f.Clock,
+		IO:              f.IOStreams,
+		TFEClient:       f.TFEClient,
+		Clock:           f.Clock,
+		TerraformConfig: f.TerraformConfig,
 	}
 
 	cmd := &cobra.Command{
-		Use:   "trigger <ORG/WORKSPACE>",
+		Use:   "trigger",
 		Short: "Trigger a new Terraform run",
 		Long: text.Heredoc(`
 			Trigger a new Terraform run in a workspace.
 
 			By default, creates a standard plan-and-apply run that requires
 			manual approval. Use flags to create different run types.
+
+			If -W/--workspace is not specified and state.tf is present,
+			the organization and workspace will be read from state.tf.
 		`),
 		Example: text.Heredoc(`
-			# Create a standard run
-			$ tfc run trigger myorg/myworkspace
+			# Create a standard run (using state.tf)
+			$ tfc run trigger
+
+			# Create a run with explicit workspace
+			$ tfc run trigger -W myorg/myworkspace
 
 			# Create a run with a custom message
-			$ tfc run trigger myorg/myworkspace -m "Deploying version 2.0"
+			$ tfc run trigger -W myorg/myworkspace -m "Deploying version 2.0"
 
 			# Create a speculative plan-only run
-			$ tfc run trigger myorg/myworkspace --plan-only
+			$ tfc run trigger --plan-only
 
 			# Create a destroy run
-			$ tfc run trigger myorg/myworkspace --destroy
+			$ tfc run trigger --destroy
 
 			# Create a refresh-only run
-			$ tfc run trigger myorg/myworkspace --refresh-only
+			$ tfc run trigger --refresh-only
 		`),
-		Args:              cobra.ExactArgs(1),
-		ValidArgsFunction: cmdutil.CompletionOrgWorkspace(opts.TFEClient),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			opts.Complete(args)
+		Args:              cobra.NoArgs,
+		ValidArgsFunction: cobra.NoFileCompletions,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			opts.Complete(cmd)
 			return opts.Run(cmd.Context())
 		},
 	}
+
+	cmdutil.AddWorkspaceFlag(cmd, &opts.WorkspaceID, opts.TFEClient)
 
 	cmd.Flags().StringVarP(&opts.Message, "message", "m", "", "Run message (default: \"Triggered via CLI\")")
 	cmd.Flags().BoolVar(&opts.PlanOnly, "plan-only", false, "Create a speculative plan-only run")
@@ -80,10 +90,8 @@ func NewCmdTrigger(f *cmdutil.Factory) *cobra.Command {
 	return cmd
 }
 
-func (opts *Options) Complete(args []string) {
-	parsed := tfc.ParseOrgWorkspace(args[0])
-	opts.Org = parsed.Org
-	opts.Workspace = parsed.Workspace
+func (opts *Options) Complete(cmd *cobra.Command) {
+	cmdutil.CompleteWorkspaceIdentifierSilent(cmd, &opts.WorkspaceID, opts.TerraformConfig)
 
 	if opts.Message == "" {
 		opts.Message = "Triggered via CLI"
@@ -91,14 +99,18 @@ func (opts *Options) Complete(args []string) {
 }
 
 func (opts *Options) Run(ctx context.Context) error {
+	if err := opts.WorkspaceID.Validate(); err != nil {
+		return fmt.Errorf("workspace required: use -W ORG/WORKSPACE or ensure state.tf exists")
+	}
+
 	client, err := opts.TFEClient()
 	if err != nil {
 		return fmt.Errorf("failed to initialize TFE client: %w", err)
 	}
 
-	ws, err := client.Workspaces.Read(ctx, opts.Org, opts.Workspace)
+	ws, err := client.Workspaces.Read(ctx, opts.WorkspaceID.Org, opts.WorkspaceID.Workspace)
 	if err != nil {
-		return fmt.Errorf("failed to read workspace %s/%s: %w", opts.Org, opts.Workspace, err)
+		return fmt.Errorf("failed to read workspace %s: %w", opts.WorkspaceID.String(), err)
 	}
 
 	runOpts := tfc.RunCreateOptions{
@@ -137,7 +149,7 @@ func (opts *Options) displayRun(run *tfc.Run) error {
 	}
 
 	// Build and display URL
-	url := buildRunURL(opts.Org, opts.Workspace, run.ID)
+	url := buildRunURL(opts.WorkspaceID.Org, opts.WorkspaceID.Workspace, run.ID)
 
 	fmt.Fprintf(opts.IO.Out, "Run created successfully\n\n")
 	fmt.Fprintf(opts.IO.Out, "  Run ID:     %s\n", run.ID)
