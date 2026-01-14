@@ -3,6 +3,7 @@ package factory
 import (
 	"context"
 	"fmt"
+	"os"
 
 	"github.com/hashicorp/go-tfe"
 	"github.com/sethvargo/go-envconfig"
@@ -11,6 +12,7 @@ import (
 	"github.com/zkhvan/tfc/pkg/cmdutil"
 	"github.com/zkhvan/tfc/pkg/credentials"
 	"github.com/zkhvan/tfc/pkg/iolib"
+	"github.com/zkhvan/tfc/pkg/tfconfig"
 )
 
 type Config struct {
@@ -37,6 +39,7 @@ func New(appVersion string) (*cmdutil.Factory, error) {
 	f.IOStreams = ioStreams(f)
 	f.Editor = editorFunc(f)
 	f.TFEClient = tfeClientFunc(f)
+	f.TerraformConfig = terraformConfigFunc(f)
 
 	return f, nil
 }
@@ -80,5 +83,15 @@ func tfeClientFunc(_ *cmdutil.Factory) func() (*tfc.Client, error) {
 		}
 
 		return tfc.NewClient(client), nil
+	}
+}
+
+func terraformConfigFunc(_ *cmdutil.Factory) func() *tfconfig.TerraformConfig {
+	return func() *tfconfig.TerraformConfig {
+		cwd, err := os.Getwd()
+		if err != nil {
+			return nil
+		}
+		return tfconfig.ReadConfig(cwd)
 	}
 }

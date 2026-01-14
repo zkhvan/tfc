@@ -2,6 +2,7 @@ package list
 
 import (
 	"context"
+	"fmt"
 	"strconv"
 
 	"github.com/hashicorp/go-tfe"
@@ -11,6 +12,7 @@ import (
 	"github.com/zkhvan/tfc/pkg/cmdutil"
 	"github.com/zkhvan/tfc/pkg/iolib"
 	"github.com/zkhvan/tfc/pkg/text"
+	"github.com/zkhvan/tfc/pkg/tfconfig"
 )
 
 const (
@@ -41,59 +43,63 @@ var (
 )
 
 type Options struct {
-	IO        *iolib.IOStreams
-	TFEClient func() (*tfc.Client, error)
-	Clock     *cmdutil.Clock
+	IO              *iolib.IOStreams
+	TFEClient       func() (*tfc.Client, error)
+	Clock           *cmdutil.Clock
+	TerraformConfig func() *tfconfig.TerraformConfig
 
-	Org       string
-	Workspace string
-	Columns   []string
+	WorkspaceID cmdutil.WorkspaceIdentifier
+	Columns     []string
 }
 
 func NewCmdList(f *cmdutil.Factory) *cobra.Command {
 	opts := &Options{
-		IO:        f.IOStreams,
-		TFEClient: f.TFEClient,
-		Clock:     f.Clock,
+		IO:              f.IOStreams,
+		TFEClient:       f.TFEClient,
+		Clock:           f.Clock,
+		TerraformConfig: f.TerraformConfig,
 	}
 
 	cmd := &cobra.Command{
-		Use:     "list <ORG/WORKSPACE>",
+		Use:     "list",
 		Short:   "List a workspace's variables",
 		Aliases: []string{"ls"},
 		Long: text.Heredoc(`
 			List a workspace's variables.
+
+			If -W/--workspace is not specified and state.tf is present,
+			the organization and workspace will be read from state.tf.
 		`),
-		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-			if len(args) == 0 {
-				return cmdutil.CompletionOrgWorkspace(opts.TFEClient)(cmd, args, toComplete)
-			}
-			return nil, cobra.ShellCompDirectiveNoFileComp
-		},
+		ValidArgsFunction: cobra.NoFileCompletions,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.Complete(cmd, args)
 			return opts.Run(cmd.Context())
 		},
 	}
 
+	cmdutil.AddWorkspaceFlag(cmd, &opts.WorkspaceID, opts.TFEClient)
+
 	_ = cmdutil.FlagStringEnumSliceP(cmd, &opts.Columns, "columns", "c", ColumnsDefault, "Columns to show.", ColumnsAll)
+	_ = cmdutil.MarkFlagsWithNoFileCompletions(cmd)
 
 	return cmd
 }
 
-func (opts *Options) Complete(_ *cobra.Command, args []string) {
-	parsed := tfc.ParseOrgWorkspace(args[0])
-	opts.Org = parsed.Org
-	opts.Workspace = parsed.Workspace
+func (opts *Options) Complete(cmd *cobra.Command, _ []string) {
+	cmdutil.CompleteWorkspaceIdentifierSilent(cmd, &opts.WorkspaceID, opts.TerraformConfig)
 }
 
 func (opts *Options) Run(ctx context.Context) error {
+	if err := opts.WorkspaceID.Validate(); err != nil {
+		return fmt.Errorf("workspace required: use -W ORG/WORKSPACE or ensure state.tf exists")
+	}
+
 	client, err := opts.TFEClient()
 	if err != nil {
 		return err
 	}
 
-	ws, err := client.Workspaces.Read(ctx, opts.Org, opts.Workspace)
+	ws, err := client.Workspaces.Read(ctx, opts.WorkspaceID.Org, opts.WorkspaceID.Workspace)
 	if err != nil {
 		return err
 	}

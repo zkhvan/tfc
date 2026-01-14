@@ -109,3 +109,20 @@ func Indent(amount int, s string) string {
 	}
 	return strings.Join(ss, "\n")
 }
+
+// Clamp constrains a value between a minimum and maximum.
+func Clamp(value, minVal, maxVal int) int {
+	if value < minVal {
+		return minVal
+	}
+	if value > maxVal {
+		return maxVal
+	}
+	return value
+}
+
+// TruncateBounded truncates a string to a width that is clamped between min and max.
+func TruncateBounded(s string, width, minVal, maxVal int) string {
+	clampedWidth := Clamp(width, minVal, maxVal)
+	return Truncate(clampedWidth, s)
+}

@@ -17,6 +17,7 @@ import (
 	"github.com/zkhvan/tfc/internal/tfc/tfetest"
 	"github.com/zkhvan/tfc/pkg/cmdutil"
 	"github.com/zkhvan/tfc/pkg/iolib"
+	"github.com/zkhvan/tfc/pkg/tfconfig"
 )
 
 func TestEdit_updates_variable_value(t *testing.T) {
@@ -118,7 +119,7 @@ func TestEdit_updates_variable_value(t *testing.T) {
 	t.Setenv("VISUAL", "")
 	t.Setenv("EDITOR", script)
 
-	result := runCommand(t, client, "myorg/my-workspace", "MY_VAR")
+	result := runCommand(t, client, "-W", "myorg/my-workspace", "MY_VAR")
 
 	if patchErr != nil {
 		t.Fatalf("failed to decode patch payload: %v", patchErr)
@@ -199,7 +200,7 @@ func TestEdit_no_changes(t *testing.T) {
 	t.Setenv("VISUAL", "")
 	t.Setenv("EDITOR", script)
 
-	result := runCommand(t, client, "myorg/my-workspace", "MY_VAR")
+	result := runCommand(t, client, "-W", "myorg/my-workspace", "MY_VAR")
 
 	if patchCalled {
 		t.Fatalf("expected no PATCH request to be made when value is unchanged")
@@ -251,7 +252,7 @@ func TestEdit_variable_not_found(t *testing.T) {
 	t.Setenv("VISUAL", "")
 	t.Setenv("EDITOR", script)
 
-	result := runCommand(t, client, "myorg/my-workspace", "missing")
+	result := runCommand(t, client, "-W", "myorg/my-workspace", "missing")
 
 	test.Buffer(t, result.ErrBuf, "variable \"missing\" not found\n")
 	test.BufferEmpty(t, result.OutBuf)
@@ -268,6 +269,7 @@ func runCommand(t *testing.T, client *tfc.Client, args ...string) *tfetest.CmdOu
 		Editor: func() *cmdutil.Editor {
 			return cmdutil.NewEditor(ios)
 		},
+		TerraformConfig: func() *tfconfig.TerraformConfig { return nil },
 	}
 
 	cmd := edit.NewCmdEdit(f)

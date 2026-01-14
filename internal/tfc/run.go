@@ -6,6 +6,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/hashicorp/go-tfe"
 
+	"github.com/zkhvan/tfc/internal/tfc/tfepaging"
 	"github.com/zkhvan/tfc/pkg/term/color"
 )
 
@@ -89,10 +90,62 @@ const (
 
 type RunCreateOptions = tfe.RunCreateOptions
 
+type WorkspaceRunListOptions struct {
+	ListOptions tfe.ListOptions
+	Limit       int
+}
+
 // RunsService provides methods for working with Terraform runs.
 type RunsService service
 
 // Create creates a new run with the given options.
 func (s *RunsService) Create(ctx context.Context, options RunCreateOptions) (*Run, error) {
 	return s.tfe.Runs.Create(ctx, options)
+}
+
+// List lists all runs for a given workspace.
+func (s *RunsService) List(
+	ctx context.Context, workspaceID string, options *WorkspaceRunListOptions,
+) ([]*Run, *Pagination, error) {
+	o := *options
+
+	if o.Limit == 0 {
+		o.Limit = 20
+	}
+
+	f := func(lo tfe.ListOptions) ([]*Run, *tfe.Pagination, error) {
+		o.ListOptions = lo
+
+		result, err := s.tfe.Runs.List(ctx, workspaceID, &tfe.RunListOptions{
+			ListOptions: lo,
+		})
+		if err != nil {
+			return nil, nil, err
+		}
+
+		return result.Items, result.Pagination, nil
+	}
+
+	current := Pagination{}
+	pager := tfepaging.New(f)
+
+	var runs []*Run
+	for i, run := range pager.All() {
+		current.Pagination = *pager.Current()
+
+		if o.Limit <= len(runs) {
+			if i < current.TotalCount {
+				current.ReachedLimit = true
+			}
+			break
+		}
+
+		runs = append(runs, run)
+	}
+
+	if err := pager.Err(); err != nil {
+		return nil, nil, err
+	}
+
+	return runs, &current, nil
 }
