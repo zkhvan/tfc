@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/charmbracelet/lipgloss"
@@ -146,11 +147,20 @@ func (opts *Options) ExtractFields(run *tfe.Run) map[string]string {
 		return s.Render(string(status))
 	}
 
+	renderMessage := func(msg string) string {
+		// Truncate multiline messages
+		if idx := strings.Index(msg, "\n"); idx != -1 {
+			msg = msg[:idx]
+		}
+		targetWidth := opts.IO.TerminalWidth() * 7 / 10
+		return text.TruncateBounded(msg, targetWidth, 20, 200)
+	}
+
 	fields := map[string]string{
 		ColumnID:        run.ID,
 		ColumnCreatedAt: renderTime(run.CreatedAt),
 		ColumnIsDestroy: strconv.FormatBool(run.IsDestroy),
-		ColumnMessage:   run.Message,
+		ColumnMessage:   renderMessage(run.Message),
 		ColumnStatus:    renderStatus(run.Status),
 	}
 
