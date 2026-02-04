@@ -4,6 +4,7 @@ import (
 	"github.com/spf13/cobra"
 
 	listCmd "github.com/zkhvan/tfc/cmd/tfc/workspace/list"
+	updatebranchCmd "github.com/zkhvan/tfc/cmd/tfc/workspace/updatebranch"
 	variablesCmd "github.com/zkhvan/tfc/cmd/tfc/workspace/variables"
 	viewCmd "github.com/zkhvan/tfc/cmd/tfc/workspace/view"
 	"github.com/zkhvan/tfc/pkg/cmdutil"
@@ -23,6 +24,7 @@ func NewCmdWorkspace(f *cmdutil.Factory) *cobra.Command {
 	}
 
 	cmd.AddCommand(listCmd.NewCmdList(f))
+	cmd.AddCommand(updatebranchCmd.NewCmdUpdateBranch(f))
 	cmd.AddCommand(variablesCmd.NewCmdVariables(f))
 	cmd.AddCommand(viewCmd.NewCmdView(f))
 

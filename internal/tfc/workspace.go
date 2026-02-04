@@ -199,3 +199,12 @@ func (s *WorkspacesService) List(
 
 	return workspaces, &current, nil
 }
+
+func (s *WorkspacesService) Update(
+	ctx context.Context,
+	org string,
+	workspace string,
+	opts tfe.WorkspaceUpdateOptions,
+) (*Workspace, error) {
+	return s.tfe.Workspaces.Update(ctx, org, workspace, opts)
+}

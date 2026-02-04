@@ -28,6 +28,7 @@ type Options struct {
 	PlanOnly    bool
 	IsDestroy   bool
 	RefreshOnly bool
+	AutoApply   bool
 }
 
 func NewCmdTrigger(f *cmdutil.Factory) *cobra.Command {
@@ -68,6 +69,9 @@ func NewCmdTrigger(f *cmdutil.Factory) *cobra.Command {
 
 			# Create a refresh-only run
 			$ tfc run trigger --refresh-only
+
+			# Create an auto-apply run (overrides workspace setting)
+			$ tfc run trigger --auto-apply
 		`),
 		Args:              cobra.NoArgs,
 		ValidArgsFunction: cobra.NoFileCompletions,
@@ -83,6 +87,7 @@ func NewCmdTrigger(f *cmdutil.Factory) *cobra.Command {
 	cmd.Flags().BoolVar(&opts.PlanOnly, "plan-only", false, "Create a speculative plan-only run")
 	cmd.Flags().BoolVar(&opts.IsDestroy, "destroy", false, "Create a destroy run")
 	cmd.Flags().BoolVar(&opts.RefreshOnly, "refresh-only", false, "Create a refresh-only run")
+	cmd.Flags().BoolVar(&opts.AutoApply, "auto-apply", false, "Auto-apply the run (overrides workspace setting)")
 
 	cmd.MarkFlagsMutuallyExclusive("plan-only", "destroy", "refresh-only")
 	_ = cmdutil.MarkAllFlagsWithNoFileCompletions(cmd)
@@ -126,6 +131,9 @@ func (opts *Options) Run(ctx context.Context) error {
 	}
 	if opts.RefreshOnly {
 		runOpts.RefreshOnly = ptr.Bool(true)
+	}
+	if opts.AutoApply {
+		runOpts.AutoApply = ptr.Bool(true)
 	}
 
 	run, err := client.Runs.Create(ctx, runOpts)
