@@ -126,6 +126,15 @@ func (s *WorkspacesService) Read(
 	return s.tfe.Workspaces.Read(ctx, org, workspace)
 }
 
+func (s *WorkspacesService) ReadWithOptions(
+	ctx context.Context,
+	org string,
+	workspace string,
+	opts *tfe.WorkspaceReadOptions,
+) (*Workspace, error) {
+	return s.tfe.Workspaces.ReadWithOptions(ctx, org, workspace, opts)
+}
+
 func (s *WorkspacesService) List(
 	ctx context.Context,
 	org string,
