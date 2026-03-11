@@ -3,6 +3,7 @@ package main
 import (
 	"github.com/spf13/cobra"
 
+	initCmd "github.com/zkhvan/tfc/cmd/tfc/init"
 	organizationCmd "github.com/zkhvan/tfc/cmd/tfc/organization"
 	runCmd "github.com/zkhvan/tfc/cmd/tfc/run"
 	versionCmd "github.com/zkhvan/tfc/cmd/tfc/version"
@@ -32,6 +33,7 @@ func NewCmdRoot(f *cmdutil.Factory, version, date string) *cobra.Command {
 	cmd.PersistentFlags().Bool("help", false, "Show help for command")
 
 	cmd.AddCommand(versionCmd.NewCmdVersion(f, version, date))
+	cmd.AddCommand(initCmd.NewCmdInit(f))
 	cmd.AddCommand(workspaceCmd.NewCmdWorkspace(f))
 	cmd.AddCommand(organizationCmd.NewCmdOrganization(f))
 	cmd.AddCommand(runCmd.NewCmdRun(f))
