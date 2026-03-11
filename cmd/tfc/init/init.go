@@ -11,22 +11,24 @@ import (
 	"github.com/zkhvan/tfc/pkg/cmdutil"
 	"github.com/zkhvan/tfc/pkg/iolib"
 	"github.com/zkhvan/tfc/pkg/text"
+	"github.com/zkhvan/tfc/pkg/tfconfig"
 )
 
 type Options struct {
-	IO        *iolib.IOStreams
-	TFEClient func() (*tfc.Client, error)
+	IO              *iolib.IOStreams
+	TFEClient       func() (*tfc.Client, error)
+	TerraformConfig func() *tfconfig.TerraformConfig
 
-	Organization string
-	Workspace    string
-	Project      string
-	Force        bool
+	WorkspaceID cmdutil.WorkspaceIdentifier
+	Project     string
+	Force       bool
 }
 
 func NewCmdInit(f *cmdutil.Factory) *cobra.Command {
 	opts := &Options{
-		IO:        f.IOStreams,
-		TFEClient: f.TFEClient,
+		IO:              f.IOStreams,
+		TFEClient:       f.TFEClient,
+		TerraformConfig: f.TerraformConfig,
 	}
 
 	cmd := &cobra.Command{
@@ -40,46 +42,34 @@ func NewCmdInit(f *cmdutil.Factory) *cobra.Command {
 		`),
 		Example: text.IndentHeredoc(2, `
 			# Generate state.tf with org and workspace
-			tfc init --org my-org --workspace my-workspace
+			tfc init -W my-org/my-workspace
 
 			# Include a project
-			tfc init --org my-org --workspace my-workspace --project my-project
+			tfc init -W my-org/my-workspace --project my-project
 
 			# Overwrite an existing state.tf
-			tfc init --org my-org --workspace my-workspace --force
+			tfc init -W my-org/my-workspace --force
 		`),
 		ValidArgsFunction: cobra.NoFileCompletions,
-		RunE: func(_ *cobra.Command, _ []string) error {
-			if err := opts.Validate(); err != nil {
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			if err := opts.Complete(cmd); err != nil {
 				return err
 			}
 			return opts.Run()
 		},
 	}
 
-	cmd.Flags().StringVarP(&opts.Organization, "org", "o", "", "Organization name (required)")
-	cmd.Flags().StringVarP(&opts.Workspace, "workspace", "w", "", "Workspace name (required)")
+	cmdutil.AddWorkspaceFlag(cmd, &opts.WorkspaceID, opts.TFEClient)
 	cmd.Flags().StringVarP(&opts.Project, "project", "p", "", "Project name (optional)")
 	cmd.Flags().BoolVar(&opts.Force, "force", false, "Overwrite existing state.tf file")
 
-	_ = cmd.MarkFlagRequired("org")
-	_ = cmd.MarkFlagRequired("workspace")
-
-	_ = cmd.RegisterFlagCompletionFunc("org", cmdutil.CompletionOrganizations(opts.TFEClient))
-	_ = cmd.RegisterFlagCompletionFunc("workspace", cmdutil.CompletionWorkspacesFromOrgFlag(opts.TFEClient))
 	_ = cmdutil.MarkFlagsWithNoFileCompletions(cmd, "project", "force")
 
 	return cmd
 }
 
-func (opts *Options) Validate() error {
-	if opts.Organization == "" {
-		return fmt.Errorf("--org is required")
-	}
-	if opts.Workspace == "" {
-		return fmt.Errorf("--workspace is required")
-	}
-	return nil
+func (opts *Options) Complete(cmd *cobra.Command) error {
+	return cmdutil.CompleteWorkspaceIdentifier(cmd, &opts.WorkspaceID, opts.TerraformConfig)
 }
 
 func (opts *Options) Run() error {
@@ -91,7 +81,7 @@ func (opts *Options) Run() error {
 		}
 	}
 
-	content := generateHCL(opts.Organization, opts.Workspace, opts.Project)
+	content := generateHCL(opts.WorkspaceID.Org, opts.WorkspaceID.Workspace, opts.Project)
 
 	if err := os.WriteFile(filename, []byte(content), 0600); err != nil {
 		return fmt.Errorf("writing %s: %w", filename, err)

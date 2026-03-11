@@ -10,6 +10,7 @@ import (
 	"github.com/zkhvan/tfc/internal/test"
 	"github.com/zkhvan/tfc/pkg/cmdutil"
 	"github.com/zkhvan/tfc/pkg/iolib"
+	"github.com/zkhvan/tfc/pkg/tfconfig"
 )
 
 func TestInit_generates_state_tf(t *testing.T) {
@@ -22,11 +23,12 @@ func TestInit_generates_state_tf(t *testing.T) {
 			Out:    stdout,
 			ErrOut: stderr,
 		},
-		TFEClient: nil,
+		TFEClient:       nil,
+		TerraformConfig: func() *tfconfig.TerraformConfig { return nil },
 	}
 
 	cmd := initCmd.NewCmdInit(f)
-	cmd.SetArgs([]string{"--org", "my-org", "--workspace", "my-workspace"})
+	cmd.SetArgs([]string{"-W", "my-org/my-workspace"})
 	err := cmd.Execute()
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -65,11 +67,12 @@ func TestInit_generates_state_tf_with_project(t *testing.T) {
 			Out:    stdout,
 			ErrOut: stderr,
 		},
-		TFEClient: nil,
+		TFEClient:       nil,
+		TerraformConfig: func() *tfconfig.TerraformConfig { return nil },
 	}
 
 	cmd := initCmd.NewCmdInit(f)
-	cmd.SetArgs([]string{"--org", "my-org", "--workspace", "my-workspace", "--project", "my-project"})
+	cmd.SetArgs([]string{"-W", "my-org/my-workspace", "--project", "my-project"})
 	err := cmd.Execute()
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -111,11 +114,12 @@ func TestInit_errors_when_state_tf_exists(t *testing.T) {
 			Out:    new(bytes.Buffer),
 			ErrOut: new(bytes.Buffer),
 		},
-		TFEClient: nil,
+		TFEClient:       nil,
+		TerraformConfig: func() *tfconfig.TerraformConfig { return nil },
 	}
 
 	cmd := initCmd.NewCmdInit(f)
-	cmd.SetArgs([]string{"--org", "my-org", "--workspace", "my-workspace"})
+	cmd.SetArgs([]string{"-W", "my-org/my-workspace"})
 	err = cmd.Execute()
 	if err == nil {
 		t.Fatal("expected error, got nil")
@@ -146,11 +150,12 @@ func TestInit_force_overwrites_existing(t *testing.T) {
 			Out:    new(bytes.Buffer),
 			ErrOut: new(bytes.Buffer),
 		},
-		TFEClient: nil,
+		TFEClient:       nil,
+		TerraformConfig: func() *tfconfig.TerraformConfig { return nil },
 	}
 
 	cmd := initCmd.NewCmdInit(f)
-	cmd.SetArgs([]string{"--org", "my-org", "--workspace", "my-workspace", "--force"})
+	cmd.SetArgs([]string{"-W", "my-org/my-workspace", "--force"})
 	err = cmd.Execute()
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
