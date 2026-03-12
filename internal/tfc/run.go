@@ -88,7 +88,10 @@ const (
 	RunGroupDiscardable RunGroup = "discardable"
 )
 
+type Plan = tfe.Plan
 type RunCreateOptions = tfe.RunCreateOptions
+type RunApplyOptions = tfe.RunApplyOptions
+type RunReadOptions = tfe.RunReadOptions
 
 type WorkspaceRunListOptions struct {
 	ListOptions tfe.ListOptions
@@ -148,4 +151,25 @@ func (s *RunsService) List(
 	}
 
 	return runs, &current, nil
+}
+
+// Read reads a run by its ID.
+func (s *RunsService) Read(ctx context.Context, runID string) (*Run, error) {
+	return s.tfe.Runs.Read(ctx, runID)
+}
+
+// ReadWithOptions reads a run by its ID with the given options.
+func (s *RunsService) ReadWithOptions(ctx context.Context, runID string, options *RunReadOptions) (*Run, error) {
+	return s.tfe.Runs.ReadWithOptions(ctx, runID, options)
+}
+
+// Apply approves a run for apply.
+func (s *RunsService) Apply(ctx context.Context, runID string, options RunApplyOptions) error {
+	return s.tfe.Runs.Apply(ctx, runID, options)
+}
+
+// IsApprovable returns true if a run with the given status can be approved for apply.
+func IsApprovable(status RunStatus) bool {
+	group, ok := runStatusGroups[status]
+	return ok && group == RunStatusGroupPending
 }
