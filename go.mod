@@ -1,6 +1,6 @@
 module github.com/zkhvan/tfc
 
-go 1.24.2
+go 1.25.0
 
 require (
 	github.com/MakeNowJust/heredoc v1.0.0
@@ -8,7 +8,7 @@ require (
 	github.com/charmbracelet/lipgloss v1.1.0
 	github.com/charmbracelet/x/term v0.2.2
 	github.com/google/go-cmp v0.7.0
-	github.com/hashicorp/go-tfe v1.101.0
+	github.com/hashicorp/go-tfe v1.103.0
 	github.com/hashicorp/hcl/v2 v2.24.0
 	github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51
 	github.com/muesli/reflow v0.3.0
